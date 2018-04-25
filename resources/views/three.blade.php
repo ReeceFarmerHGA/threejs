@@ -27,10 +27,20 @@
 
         function init() {
 
-            camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.z = 1;
+            renderer = new THREE.WebGLRenderer( { antialias: true } );
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            document.body.appendChild( renderer.domElement );
 
             scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(100, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 100;
+
+            controls = new THREE.OrbitControls( camera );
+
+            //controls.update() must be called after any manual changes to the camera's transform
+            camera.position.set( 0.8, 0, 0 );
+            controls.update();
 
             geometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
             material = new THREE.MeshNormalMaterial();
@@ -53,24 +63,23 @@
                 }
             }
 
-            renderer = new THREE.WebGLRenderer( { antialias: true } );
-            renderer.setSize( window.innerWidth, window.innerHeight );
-            document.body.appendChild( renderer.domElement );
-
             scene.add( group );
 
         }
 
         function animate() {
-
             requestAnimationFrame( animate );
+            //
+            // group.rotation.x += 0.05;
+            // group.rotation.y += 0.05;
 
-            group.rotation.x += 0.05;
-            group.rotation.y += 0.05;
+            controls.update();
+
 
             renderer.render( scene, camera );
-
         }
+
+
         </script>
     </body>
 </html>

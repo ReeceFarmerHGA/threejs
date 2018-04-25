@@ -5,5 +5,7 @@
  * building robust, powerful web applications using Vue and Laravel.
  */
 
-// require('./bootstrap');
-global.THREE = require('three');
+global.$ = require('jquery');
+THREE = require('three');
+require('three/examples/js/controls/OrbitControls');
+/* global THREE */
