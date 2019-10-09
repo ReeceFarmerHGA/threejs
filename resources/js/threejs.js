@@ -1,5 +1,6 @@
 /* eslint indent: 0 */
 /* eslint one-var: 0 */
+/* eslint space-before-function-paren: 0 */
 
 import jQuery from 'jquery';
 import * as THREE from 'three';
@@ -8,14 +9,18 @@ import OrbitControls from 'three-orbitcontrols';
 
 (function ($) {
     'use strict';
-    var scene, camera, renderer, controls;
+
+    var scene, camera, renderer, controls, stats;
+    var vector = new THREE.Vector3();
+    var allDoorContainer = new THREE.Group();
 
     // Enviroment
-    var layoutCode = 'LLR',
+    var layoutCode = 'LLRLLR',
         louvreSizeY = 15,
         louvreSizeZ = 2,
+        doorColor = 0xffffff,
         doorSizeX = 200,
-        doorSizeY = 300,
+        doorSizeY = 500,
         doorSizeZ = 20,
         doorFrameVerticalSizeX = 20,
         doorFrameVerticalSizeY = doorSizeY,
@@ -24,35 +29,31 @@ import OrbitControls from 'three-orbitcontrols';
         doorFrameHorizontalSizeY = 30,
         doorFrameHorizontalSizeZ = doorSizeZ * 0.5;
 
-    var stats = new Stats();
-    stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
-    document.body.appendChild(stats.dom);
-
     init();
-    createDoor();
+    readLayoutCode();
     animate();
 
     function init() {
         // Scene
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x333333);
 
-        // spotlights
-        var spotLightFront = new THREE.SpotLight(0xffffff);
-        spotLightFront.position.set(200, 200, 500);
-        scene.add(spotLightFront);
-
-        var spotLightBack = new THREE.SpotLight(0xffffff);
-        spotLightBack.position.set(200, -200, -1000);
-        scene.add(spotLightBack);
+        // lights
+        var hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
+        hemiLight.color.setHSL(0, 1, 1);
+        hemiLight.groundColor.setHSL(0, 0, 0.3);
+        hemiLight.position.set(-300, 400, 200);
+        scene.add(hemiLight);
+        // var hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
+        // scene.add(hemiLightHelper);
 
         // Camera
-        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
-        camera.position.z = 350;
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 9999);
+        camera.position.z = 2000;
 
         // Renderer
         renderer = new THREE.WebGLRenderer({
-            antialias: true
+            antialias: true,
+            alpha: true
         });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
@@ -62,103 +63,128 @@ import OrbitControls from 'three-orbitcontrols';
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
         controls.enableZoom = true;
+
+        // Stats
+        stats = new Stats();
+        stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+        document.body.appendChild(stats.dom);
+
+        // gui
+        var gui = new dat.GUI();
+
     }
 
-    function createDoor() {
-        var group = new THREE.Group();
+    function readLayoutCode() {
+        for (var $stringIndex = 0; $stringIndex < layoutCode.length; $stringIndex++) {
+            createDoor(layoutCode[$stringIndex], $stringIndex);
+        }
+        var allDoorContainerBox = new THREE.Box3().setFromObject(allDoorContainer);
+        allDoorContainerBox.getCenter(allDoorContainer.position).multiplyScalar(-1);
+
+        scene.add(allDoorContainer);
+        camera.position.z = allDoorContainerBox.getSize(vector).x / 2 / Math.tan(Math.PI * 45 / 360);
+    }
+
+    function createDoor(type, index) {
+        var singleDoorContainer = new THREE.Group();
 
         var door = new THREE.Mesh(
                 new THREE.BoxGeometry(doorSizeX, doorSizeY, doorSizeZ),
                 new THREE.MeshLambertMaterial({
-                    transparent: true,
-                    opacity: 0
+                    // transparent: true,
+                    color: 0x00ff00,
+                    wireframe: true
+                    // opacity: 0
                 })
             ),
             doorBox = new THREE.Box3().setFromObject(door);
 
+        singleDoorContainer.add(door);
+        singleDoorContainer.position.x = doorBox.getSize(vector).x * index;
+        allDoorContainer.add(singleDoorContainer);
 
-        var horizontalFrame = new THREE.Mesh(
-                new THREE.BoxGeometry(doorFrameHorizontalSizeX, doorFrameHorizontalSizeY, doorFrameHorizontalSizeZ),
-                new THREE.MeshLambertMaterial({
-                    color: 0xeeeeee
-                })
-            ),
-            horizontalFrameBox = new THREE.Box3().setFromObject(horizontalFrame);
+        createFrames(singleDoorContainer, doorBox);
+        createLouvres(singleDoorContainer, doorBox);
+    }
 
-        var horizontalFramePositions = [{
-                y: doorBox.getSize().y / 2 - horizontalFrameBox.getSize().y / 2,
+    function createFrames(parent, target) {
+        var frames = [{
+            name: 'top',
+            color: doorColor,
+            size: {
+                x: doorFrameHorizontalSizeX,
+                y: doorFrameHorizontalSizeY,
+                z: doorFrameHorizontalSizeZ
             },
-            {
-                y: (doorBox.getSize().y / 2 - horizontalFrameBox.getSize().y / 2) * -1
+            position: {
+                x: 0,
+                y: target.getSize(vector).y / 2 - doorFrameHorizontalSizeY / 2,
+                z: 0
             }
-        ];
-
-        for (var $frameInteger = 0; $frameInteger <= horizontalFramePositions.length - 1;) { // Loop through all the horizontal frame positions
-            var key = Object.keys(horizontalFramePositions[$frameInteger]);
-            var frame = horizontalFrame.clone();
-            for (var $positionInteger = 0; $positionInteger <= key.length - 1;) { // loop through each position axis
-                frame.position[key[$positionInteger]] = horizontalFramePositions[$frameInteger][key[$positionInteger]];
-                group.add(frame);
-                $positionInteger++;
-            }
-            $frameInteger++;
-        }
-        $frameInteger = null;
-        $positionInteger = null;
-        key = null;
-        frame = null;
-
-        var verticalFrame = new THREE.Mesh(
-                new THREE.BoxGeometry(doorFrameVerticalSizeX, doorFrameVerticalSizeY, doorFrameVerticalSizeZ),
-                new THREE.MeshLambertMaterial({
-                    color: 0xeeeeee
-                })
-            ),
-            verticalFrameBox = new THREE.Box3().setFromObject(verticalFrame);
-
-        var verticalFramePositions = [{
-                x: doorBox.getSize().x / 2 - verticalFrameBox.getSize().x / 2,
+        }, {
+            name: 'bottom',
+            color: doorColor,
+            size: {
+                x: doorFrameHorizontalSizeX,
+                y: doorFrameHorizontalSizeY,
+                z: doorFrameHorizontalSizeZ
             },
-            {
-                x: (doorBox.getSize().x / 2 - verticalFrameBox.getSize().x / 2) * -1
+            position: {
+                x: 0,
+                y: (target.getSize(vector).y / 2 - doorFrameHorizontalSizeY / 2) * -1,
+                z: 0
             }
-        ];
-
-        for ($frameInteger = 0; $frameInteger <= verticalFramePositions.length - 1;) { // Loop through all the horizontal frame positions
-            key = Object.keys(verticalFramePositions[$frameInteger]);
-            frame = verticalFrame.clone();
-            for ($positionInteger = 0; $positionInteger <= key.length - 1;) { // loop through each position axis
-                frame.position[key[$positionInteger]] = verticalFramePositions[$frameInteger][key[$positionInteger]];
-                group.add(frame);
-                $positionInteger++;
+        }, {
+            name: 'left',
+            color: doorColor,
+            size: {
+                x: doorFrameVerticalSizeX,
+                y: doorFrameVerticalSizeY,
+                z: doorFrameVerticalSizeZ
+            },
+            position: {
+                x: (target.getSize(vector).x / 2 - doorFrameVerticalSizeX / 2) * -1,
+                y: 0,
+                z: 0
             }
-            $frameInteger++;
-        }
+        }, {
+            name: 'right',
+            color: doorColor,
+            size: {
+                x: doorFrameVerticalSizeX,
+                y: doorFrameVerticalSizeY,
+                z: doorFrameVerticalSizeZ
+            },
+            position: {
+                x: target.getSize(vector).x / 2 - doorFrameVerticalSizeX / 2,
+                y: 0,
+                z: 0
+            }
+        }];
 
-        // group.add(door);
-
-        // var groupBox = new THREE.Box3().setFromObject(group);
-        // group.position.x = (groupBox.getSize().x / 2);
-
-        createLouvres(group, doorBox);
-
-        // var clone = group.clone();
-        // for (var $i = 0; $i <= 3; $i++) {
-        //     var clone = door.clone(),
-        //         cloneBox = new THREE.Box3().setFromObject(clone);
-        //     clone.position.x = cloneBox.getSize().x * $i;
-        //     group.add(clone);
-        // }
-        scene.add(group);
+        for (var $frameIndex = 0; $frameIndex <= frames.length - 1;) {
+            var frameOptions = frames[$frameIndex];
+            var frame = new THREE.Mesh(
+                new THREE.BoxGeometry(frameOptions.size.x, frameOptions.size.y, frameOptions.size.z),
+                new THREE.MeshLambertMaterial({
+                    color: frameOptions.color
+                })
+            );
+            frame.position.x = frameOptions.position.x;
+            frame.position.y = frameOptions.position.y;
+            frame.position.z = frameOptions.position.z;
+            parent.add(frame);
+            $frameIndex++;
+        };
     }
 
     function createLouvres(parent, target) {
-        var louvreCount = (target.getSize().y - doorFrameHorizontalSizeY * 2) / louvreSizeY;
+        var louvreCount = (target.getSize(vector).y - doorFrameHorizontalSizeY * 2) / louvreSizeY;
 
         var louvre = new THREE.Mesh(
-            new THREE.BoxGeometry(target.getSize().x, louvreSizeY, louvreSizeZ),
+            new THREE.BoxGeometry(target.getSize(vector).x, louvreSizeY, louvreSizeZ),
             new THREE.MeshLambertMaterial({
-                color: 0xeeeeee
+                color: doorColor
             })
         );
 
@@ -166,7 +192,7 @@ import OrbitControls from 'three-orbitcontrols';
         while (i <= louvreCount) {
             var newLouvre = louvre.clone();
             newLouvre.name = 'louvrename';
-            newLouvre.position.y = ((target.getSize().y / 2) - (louvreSizeY / 2) - louvreSizeY * (i - 1)) - doorFrameHorizontalSizeY;
+            newLouvre.position.y = ((target.getSize(vector).y / 2) - (louvreSizeY / 2) - louvreSizeY * (i - 1)) - doorFrameHorizontalSizeY;
             parent.add(newLouvre);
             i++;
         }

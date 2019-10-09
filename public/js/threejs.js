@@ -61537,6 +61537,8 @@ __webpack_require__.r(__webpack_exports__);
 
 /* eslint one-var: 0 */
 
+/* eslint space-before-function-paren: 0 */
+
 
 
 
@@ -61544,13 +61546,16 @@ __webpack_require__.r(__webpack_exports__);
 (function ($) {
   'use strict';
 
-  var scene, camera, renderer, controls; // Enviroment
+  var scene, camera, renderer, controls, stats;
+  var vector = new three__WEBPACK_IMPORTED_MODULE_1__["Vector3"]();
+  var allDoorContainer = new three__WEBPACK_IMPORTED_MODULE_1__["Group"](); // Enviroment
 
-  var layoutCode = 'LLR',
+  var layoutCode = 'LLRLLR',
       louvreSizeY = 15,
       louvreSizeZ = 2,
+      doorColor = 0xffffff,
       doorSizeX = 200,
-      doorSizeY = 300,
+      doorSizeY = 500,
       doorSizeZ = 20,
       doorFrameVerticalSizeX = 20,
       doorFrameVerticalSizeY = doorSizeY,
@@ -61558,31 +61563,28 @@ __webpack_require__.r(__webpack_exports__);
       doorFrameHorizontalSizeX = doorSizeX,
       doorFrameHorizontalSizeY = 30,
       doorFrameHorizontalSizeZ = doorSizeZ * 0.5;
-  var stats = new stats_js__WEBPACK_IMPORTED_MODULE_2___default.a();
-  stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
-
-  document.body.appendChild(stats.dom);
   init();
-  createDoor();
+  readLayoutCode();
   animate();
 
   function init() {
     // Scene
-    scene = new three__WEBPACK_IMPORTED_MODULE_1__["Scene"]();
-    scene.background = new three__WEBPACK_IMPORTED_MODULE_1__["Color"](0x333333); // spotlights
+    scene = new three__WEBPACK_IMPORTED_MODULE_1__["Scene"](); // lights
 
-    var spotLightFront = new three__WEBPACK_IMPORTED_MODULE_1__["SpotLight"](0xffffff);
-    spotLightFront.position.set(200, 200, 500);
-    scene.add(spotLightFront);
-    var spotLightBack = new three__WEBPACK_IMPORTED_MODULE_1__["SpotLight"](0xffffff);
-    spotLightBack.position.set(200, -200, -1000);
-    scene.add(spotLightBack); // Camera
+    var hemiLight = new three__WEBPACK_IMPORTED_MODULE_1__["HemisphereLight"](0xffffff, 0xffffff, 1);
+    hemiLight.color.setHSL(0, 1, 1);
+    hemiLight.groundColor.setHSL(0, 0, 0.3);
+    hemiLight.position.set(-300, 400, 200);
+    scene.add(hemiLight); // var hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
+    // scene.add(hemiLightHelper);
+    // Camera
 
-    camera = new three__WEBPACK_IMPORTED_MODULE_1__["PerspectiveCamera"](75, window.innerWidth / window.innerHeight, 1, 1000);
-    camera.position.z = 350; // Renderer
+    camera = new three__WEBPACK_IMPORTED_MODULE_1__["PerspectiveCamera"](45, window.innerWidth / window.innerHeight, 1, 9999);
+    camera.position.z = 2000; // Renderer
 
     renderer = new three__WEBPACK_IMPORTED_MODULE_1__["WebGLRenderer"]({
-      antialias: true
+      antialias: true,
+      alpha: true
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement); // Controls
@@ -61590,95 +61592,124 @@ __webpack_require__.r(__webpack_exports__);
     controls = new three_orbitcontrols__WEBPACK_IMPORTED_MODULE_3___default.a(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
-    controls.enableZoom = true;
+    controls.enableZoom = true; // Stats
+
+    stats = new stats_js__WEBPACK_IMPORTED_MODULE_2___default.a();
+    stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
+
+    document.body.appendChild(stats.dom); // gui
+
+    var gui = new dat.GUI();
   }
 
-  function createDoor() {
-    var group = new three__WEBPACK_IMPORTED_MODULE_1__["Group"]();
-    var door = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](doorSizeX, doorSizeY, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      transparent: true,
-      opacity: 0
-    })),
-        doorBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(door);
-    var horizontalFrame = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](doorFrameHorizontalSizeX, doorFrameHorizontalSizeY, doorFrameHorizontalSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      color: 0xeeeeee
-    })),
-        horizontalFrameBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(horizontalFrame);
-    var horizontalFramePositions = [{
-      y: doorBox.getSize().y / 2 - horizontalFrameBox.getSize().y / 2
-    }, {
-      y: (doorBox.getSize().y / 2 - horizontalFrameBox.getSize().y / 2) * -1
-    }];
-
-    for (var $frameInteger = 0; $frameInteger <= horizontalFramePositions.length - 1;) {
-      // Loop through all the horizontal frame positions
-      var key = Object.keys(horizontalFramePositions[$frameInteger]);
-      var frame = horizontalFrame.clone();
-
-      for (var $positionInteger = 0; $positionInteger <= key.length - 1;) {
-        // loop through each position axis
-        frame.position[key[$positionInteger]] = horizontalFramePositions[$frameInteger][key[$positionInteger]];
-        group.add(frame);
-        $positionInteger++;
-      }
-
-      $frameInteger++;
+  function readLayoutCode() {
+    for (var $stringIndex = 0; $stringIndex < layoutCode.length; $stringIndex++) {
+      createDoor(layoutCode[$stringIndex], $stringIndex);
     }
 
-    $frameInteger = null;
-    $positionInteger = null;
-    key = null;
-    frame = null;
-    var verticalFrame = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](doorFrameVerticalSizeX, doorFrameVerticalSizeY, doorFrameVerticalSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      color: 0xeeeeee
+    var allDoorContainerBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(allDoorContainer);
+    allDoorContainerBox.getCenter(allDoorContainer.position).multiplyScalar(-1);
+    scene.add(allDoorContainer);
+    camera.position.z = allDoorContainerBox.getSize(vector).x / 2 / Math.tan(Math.PI * 45 / 360);
+  }
+
+  function createDoor(type, index) {
+    var singleDoorContainer = new three__WEBPACK_IMPORTED_MODULE_1__["Group"]();
+    var door = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](doorSizeX, doorSizeY, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
+      // transparent: true,
+      color: 0x00ff00,
+      wireframe: true // opacity: 0
+
     })),
-        verticalFrameBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(verticalFrame);
-    var verticalFramePositions = [{
-      x: doorBox.getSize().x / 2 - verticalFrameBox.getSize().x / 2
+        doorBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(door);
+    singleDoorContainer.add(door);
+    singleDoorContainer.position.x = doorBox.getSize(vector).x * index;
+    allDoorContainer.add(singleDoorContainer);
+    createFrames(singleDoorContainer, doorBox);
+    createLouvres(singleDoorContainer, doorBox);
+  }
+
+  function createFrames(parent, target) {
+    var frames = [{
+      name: 'top',
+      color: doorColor,
+      size: {
+        x: doorFrameHorizontalSizeX,
+        y: doorFrameHorizontalSizeY,
+        z: doorFrameHorizontalSizeZ
+      },
+      position: {
+        x: 0,
+        y: target.getSize(vector).y / 2 - doorFrameHorizontalSizeY / 2,
+        z: 0
+      }
     }, {
-      x: (doorBox.getSize().x / 2 - verticalFrameBox.getSize().x / 2) * -1
+      name: 'bottom',
+      color: doorColor,
+      size: {
+        x: doorFrameHorizontalSizeX,
+        y: doorFrameHorizontalSizeY,
+        z: doorFrameHorizontalSizeZ
+      },
+      position: {
+        x: 0,
+        y: (target.getSize(vector).y / 2 - doorFrameHorizontalSizeY / 2) * -1,
+        z: 0
+      }
+    }, {
+      name: 'left',
+      color: doorColor,
+      size: {
+        x: doorFrameVerticalSizeX,
+        y: doorFrameVerticalSizeY,
+        z: doorFrameVerticalSizeZ
+      },
+      position: {
+        x: (target.getSize(vector).x / 2 - doorFrameVerticalSizeX / 2) * -1,
+        y: 0,
+        z: 0
+      }
+    }, {
+      name: 'right',
+      color: doorColor,
+      size: {
+        x: doorFrameVerticalSizeX,
+        y: doorFrameVerticalSizeY,
+        z: doorFrameVerticalSizeZ
+      },
+      position: {
+        x: target.getSize(vector).x / 2 - doorFrameVerticalSizeX / 2,
+        y: 0,
+        z: 0
+      }
     }];
 
-    for ($frameInteger = 0; $frameInteger <= verticalFramePositions.length - 1;) {
-      // Loop through all the horizontal frame positions
-      key = Object.keys(verticalFramePositions[$frameInteger]);
-      frame = verticalFrame.clone();
+    for (var $frameIndex = 0; $frameIndex <= frames.length - 1;) {
+      var frameOptions = frames[$frameIndex];
+      var frame = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](frameOptions.size.x, frameOptions.size.y, frameOptions.size.z), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
+        color: frameOptions.color
+      }));
+      frame.position.x = frameOptions.position.x;
+      frame.position.y = frameOptions.position.y;
+      frame.position.z = frameOptions.position.z;
+      parent.add(frame);
+      $frameIndex++;
+    }
 
-      for ($positionInteger = 0; $positionInteger <= key.length - 1;) {
-        // loop through each position axis
-        frame.position[key[$positionInteger]] = verticalFramePositions[$frameInteger][key[$positionInteger]];
-        group.add(frame);
-        $positionInteger++;
-      }
-
-      $frameInteger++;
-    } // group.add(door);
-    // var groupBox = new THREE.Box3().setFromObject(group);
-    // group.position.x = (groupBox.getSize().x / 2);
-
-
-    createLouvres(group, doorBox); // var clone = group.clone();
-    // for (var $i = 0; $i <= 3; $i++) {
-    //     var clone = door.clone(),
-    //         cloneBox = new THREE.Box3().setFromObject(clone);
-    //     clone.position.x = cloneBox.getSize().x * $i;
-    //     group.add(clone);
-    // }
-
-    scene.add(group);
+    ;
   }
 
   function createLouvres(parent, target) {
-    var louvreCount = (target.getSize().y - doorFrameHorizontalSizeY * 2) / louvreSizeY;
-    var louvre = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](target.getSize().x, louvreSizeY, louvreSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      color: 0xeeeeee
+    var louvreCount = (target.getSize(vector).y - doorFrameHorizontalSizeY * 2) / louvreSizeY;
+    var louvre = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](target.getSize(vector).x, louvreSizeY, louvreSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
+      color: doorColor
     }));
     var i = 1;
 
     while (i <= louvreCount) {
       var newLouvre = louvre.clone();
       newLouvre.name = 'louvrename';
-      newLouvre.position.y = target.getSize().y / 2 - louvreSizeY / 2 - louvreSizeY * (i - 1) - doorFrameHorizontalSizeY;
+      newLouvre.position.y = target.getSize(vector).y / 2 - louvreSizeY / 2 - louvreSizeY * (i - 1) - doorFrameHorizontalSizeY;
       parent.add(newLouvre);
       i++;
     }

@@ -20,4 +20,24 @@ $cyan: #6cb2eb;
 
 body {
     margin: 0 !important;
+    background: radial-gradient(rgba(28, 26, 35, 0.7), #1c1a23);
+
+    &:before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        left: 0;
+        right: 0;
+        margin: auto;
+        width: 430px;
+        height: 300px;
+        opacity: .5;
+        background: {
+            image: url("/images/draw_logo.svg");
+            size: contain;
+            repeat: no-repeat;
+        }
+        z-index: -1;
+    }
 }
