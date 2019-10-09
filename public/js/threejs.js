@@ -61546,7 +61546,8 @@ __webpack_require__.r(__webpack_exports__);
 
   var scene, camera, renderer, controls; // Enviroment
 
-  var louvreSizeY = 15,
+  var layoutCode = 'LLR',
+      louvreSizeY = 15,
       louvreSizeZ = 2,
       doorSizeX = 200,
       doorSizeY = 300,
@@ -61562,7 +61563,7 @@ __webpack_require__.r(__webpack_exports__);
 
   document.body.appendChild(stats.dom);
   init();
-  createDoors();
+  createDoor();
   animate();
 
   function init() {
@@ -61580,7 +61581,9 @@ __webpack_require__.r(__webpack_exports__);
     camera = new three__WEBPACK_IMPORTED_MODULE_1__["PerspectiveCamera"](75, window.innerWidth / window.innerHeight, 1, 1000);
     camera.position.z = 350; // Renderer
 
-    renderer = new three__WEBPACK_IMPORTED_MODULE_1__["WebGLRenderer"]();
+    renderer = new three__WEBPACK_IMPORTED_MODULE_1__["WebGLRenderer"]({
+      antialias: true
+    });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement); // Controls
 
@@ -61590,7 +61593,7 @@ __webpack_require__.r(__webpack_exports__);
     controls.enableZoom = true;
   }
 
-  function createDoors() {
+  function createDoor() {
     var group = new three__WEBPACK_IMPORTED_MODULE_1__["Group"]();
     var door = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](doorSizeX, doorSizeY, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
       transparent: true,
@@ -61649,13 +61652,20 @@ __webpack_require__.r(__webpack_exports__);
       }
 
       $frameInteger++;
-    }
+    } // group.add(door);
+    // var groupBox = new THREE.Box3().setFromObject(group);
+    // group.position.x = (groupBox.getSize().x / 2);
 
-    group.rotation.y = three__WEBPACK_IMPORTED_MODULE_1__["Math"].degToRad(10);
-    group.rotation.x = three__WEBPACK_IMPORTED_MODULE_1__["Math"].degToRad(10);
-    group.add(door);
+
+    createLouvres(group, doorBox); // var clone = group.clone();
+    // for (var $i = 0; $i <= 3; $i++) {
+    //     var clone = door.clone(),
+    //         cloneBox = new THREE.Box3().setFromObject(clone);
+    //     clone.position.x = cloneBox.getSize().x * $i;
+    //     group.add(clone);
+    // }
+
     scene.add(group);
-    createLouvres(group, doorBox);
   }
 
   function createLouvres(parent, target) {

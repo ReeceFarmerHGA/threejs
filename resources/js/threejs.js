@@ -11,7 +11,8 @@ import OrbitControls from 'three-orbitcontrols';
     var scene, camera, renderer, controls;
 
     // Enviroment
-    var louvreSizeY = 15,
+    var layoutCode = 'LLR',
+        louvreSizeY = 15,
         louvreSizeZ = 2,
         doorSizeX = 200,
         doorSizeY = 300,
@@ -28,7 +29,7 @@ import OrbitControls from 'three-orbitcontrols';
     document.body.appendChild(stats.dom);
 
     init();
-    createDoors();
+    createDoor();
     animate();
 
     function init() {
@@ -50,7 +51,9 @@ import OrbitControls from 'three-orbitcontrols';
         camera.position.z = 350;
 
         // Renderer
-        renderer = new THREE.WebGLRenderer();
+        renderer = new THREE.WebGLRenderer({
+            antialias: true
+        });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
@@ -61,7 +64,7 @@ import OrbitControls from 'three-orbitcontrols';
         controls.enableZoom = true;
     }
 
-    function createDoors() {
+    function createDoor() {
         var group = new THREE.Group();
 
         var door = new THREE.Mesh(
@@ -72,6 +75,7 @@ import OrbitControls from 'three-orbitcontrols';
                 })
             ),
             doorBox = new THREE.Box3().setFromObject(door);
+
 
         var horizontalFrame = new THREE.Mesh(
                 new THREE.BoxGeometry(doorFrameHorizontalSizeX, doorFrameHorizontalSizeY, doorFrameHorizontalSizeZ),
@@ -131,11 +135,21 @@ import OrbitControls from 'three-orbitcontrols';
             $frameInteger++;
         }
 
-        group.rotation.y = THREE.Math.degToRad(10);
-        group.rotation.x = THREE.Math.degToRad(10);
-        group.add(door);
-        scene.add(group);
+        // group.add(door);
+
+        // var groupBox = new THREE.Box3().setFromObject(group);
+        // group.position.x = (groupBox.getSize().x / 2);
+
         createLouvres(group, doorBox);
+
+        // var clone = group.clone();
+        // for (var $i = 0; $i <= 3; $i++) {
+        //     var clone = door.clone(),
+        //         cloneBox = new THREE.Box3().setFromObject(clone);
+        //     clone.position.x = cloneBox.getSize().x * $i;
+        //     group.add(clone);
+        // }
+        scene.add(group);
     }
 
     function createLouvres(parent, target) {
