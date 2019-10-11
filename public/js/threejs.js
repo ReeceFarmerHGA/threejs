@@ -64485,10 +64485,10 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-(function ($) {
+(function () {
   'use strict';
 
-  var scene, camera, renderer, controls, stats, frame;
+  var scene, camera, renderer, controls, stats, frame, hemiLight;
   var vector = new three__WEBPACK_IMPORTED_MODULE_1__["Vector3"]();
   var allDoorContainer = new three__WEBPACK_IMPORTED_MODULE_1__["Group"](); // Enviroment
 
@@ -64517,7 +64517,7 @@ __webpack_require__.r(__webpack_exports__);
     // Scene
     scene = new three__WEBPACK_IMPORTED_MODULE_1__["Scene"](); // Lights
 
-    var hemiLight = new three__WEBPACK_IMPORTED_MODULE_1__["HemisphereLight"](0xffffff, 0xaaaaaa, 1);
+    hemiLight = new three__WEBPACK_IMPORTED_MODULE_1__["HemisphereLight"](0xffffff, 0xaaaaaa, 1);
     hemiLight.position.set(-300, 400, 200);
     scene.add(hemiLight); // var hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
     // scene.add(hemiLightHelper);
@@ -64589,31 +64589,33 @@ __webpack_require__.r(__webpack_exports__);
       allDoorContainer.remove(allDoorContainer.children[i]);
     }
 
-    for (var $stringIndex = 0; $stringIndex < layoutCode.length; $stringIndex++) {
-      createDoor(layoutCode[$stringIndex], $stringIndex);
+    for (var stringIndex = 0; stringIndex < layoutCode.length; stringIndex++) {
+      createDoor(layoutCode[stringIndex], stringIndex);
     }
 
     scene.add(allDoorContainer);
     allDoorContainer.position.x = 0;
     var allDoorContainerBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(allDoorContainer);
-    allDoorContainer.position.x = allDoorContainerBox.getCenter().x * -1;
+    allDoorContainer.position.x = allDoorContainerBox.getCenter(vector).x * -1;
     camera.position.z = allDoorContainerBox.getSize(vector).x / 2 / Math.tan(Math.PI * 45 / 360) + 200;
   }
 
   function createDoor(type, index) {
     var singleDoorContainer = new three__WEBPACK_IMPORTED_MODULE_1__["Group"]();
     var door = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](doorSizeX, doorSizeY, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      // transparent: true,
       color: 0x00ff00,
-      wireframe: true // opacity: 0
-
+      wireframe: true
     })),
-        doorBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(door); // singleDoorContainer.add(door);
-
+        doorBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(door);
     singleDoorContainer.position.x = doorBox.getSize(vector).x * index;
     allDoorContainer.add(singleDoorContainer);
+    var louvreArea = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](doorSizeX - doorFrameVerticalSizeX * 2, doorSizeY - doorFrameHorizontalSizeY * 2, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
+      color: 0x00ff00,
+      wireframe: true
+    }));
+    louvreArea.position.set(doorFrameVerticalSizeX, doorFrameHorizontalSizeY, 0);
     createFrames(singleDoorContainer, doorBox);
-    createLouvres(singleDoorContainer, doorBox);
+    createLouvres(singleDoorContainer, louvreArea);
   }
 
   function createFrames(parent, target) {
@@ -64671,8 +64673,8 @@ __webpack_require__.r(__webpack_exports__);
       }
     }];
 
-    for (var $frameIndex = 0; $frameIndex <= frames.length - 1;) {
-      var frameOptions = frames[$frameIndex];
+    for (var frameIndex = 0; frameIndex <= frames.length - 1;) {
+      var frameOptions = frames[frameIndex];
       frame = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](frameOptions.size.x, frameOptions.size.y, frameOptions.size.z), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
         color: doorColor
       }));
@@ -64681,30 +64683,33 @@ __webpack_require__.r(__webpack_exports__);
       frame.position.y = frameOptions.position.y;
       frame.position.z = frameOptions.position.z;
       parent.add(frame);
-      $frameIndex++;
+      frameIndex++;
     }
 
     ;
   }
 
   function createLouvres(parent, target) {
-    var louvreCount = (target.getSize(vector).y - doorFrameHorizontalSizeY * 2) / louvreSizeY;
-    var louvre = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](target.getSize(vector).x, louvreSizeY, louvreSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
+    var targetBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(target);
+    var louvreCount = Math.floor(targetBox.getSize(vector).y / louvreSizeY);
+    var louvre = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](targetBox.getSize(vector).x, louvreSizeY, louvreSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
       color: doorColor
     }));
 
-    for (var $louvreIndex = 0; $louvreIndex <= louvreCount;) {
+    for (var louvreIndex = 0; louvreIndex < louvreCount;) {
       var newLouvre = louvre.clone();
       newLouvre.name = 'louvre';
-      newLouvre.position.y = target.getSize(vector).y / 2 - louvreSizeY / 2 - louvreSizeY * ($louvreIndex - 1) - doorFrameHorizontalSizeY;
+      newLouvre.position.y = targetBox.getSize(vector).y / 2 - louvreSizeY / 2 - louvreSizeY * (louvreIndex - 1) - doorFrameHorizontalSizeY;
       newLouvre.rotation.x = three__WEBPACK_IMPORTED_MODULE_1__["Math"].degToRad(-50);
       parent.add(newLouvre);
-      $louvreIndex++;
+      louvreIndex++;
     }
   }
 
+  var _int = 0.01;
+
   function animate() {
-    stats.begin(); // scene.rotation.y += THREE.Math.degToRad(1);
+    stats.begin(); // scene.rotation.y += THREE.Math.degToRad(1);;
 
     requestAnimationFrame(animate);
     renderer.render(scene, camera);
