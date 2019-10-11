@@ -1,22 +1,25 @@
 /* eslint indent: 0 */
 /* eslint one-var: 0 */
 /* eslint space-before-function-paren: 0 */
+/* global requestAnimationFrame */
 
 import jQuery from 'jquery';
 import * as THREE from 'three';
 import Stats from 'stats.js';
 import OrbitControls from 'three-orbitcontrols';
+import Dat from 'dat.gui';
+import 'three-dat.gui';
 
 (function ($) {
     'use strict';
 
-    var scene, camera, renderer, controls, stats;
+    var scene, camera, renderer, controls, stats, frame;
     var vector = new THREE.Vector3();
     var allDoorContainer = new THREE.Group();
 
     // Enviroment
-    var layoutCode = 'LLRLLR',
-        louvreSizeY = 15,
+    var layoutCode = 'LLR',
+        louvreSizeY = 23,
         louvreSizeZ = 2,
         doorColor = 0xffffff,
         doorSizeX = 200,
@@ -29,6 +32,11 @@ import OrbitControls from 'three-orbitcontrols';
         doorFrameHorizontalSizeY = 30,
         doorFrameHorizontalSizeZ = doorSizeZ * 0.5;
 
+    var options = {
+        layoutCode: layoutCode,
+        color: doorColor
+    };
+
     init();
     readLayoutCode();
     animate();
@@ -37,10 +45,8 @@ import OrbitControls from 'three-orbitcontrols';
         // Scene
         scene = new THREE.Scene();
 
-        // lights
-        var hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1);
-        hemiLight.color.setHSL(0, 1, 1);
-        hemiLight.groundColor.setHSL(0, 0, 0.3);
+        // Lights
+        var hemiLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1);
         hemiLight.position.set(-300, 400, 200);
         scene.add(hemiLight);
         // var hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
@@ -69,20 +75,64 @@ import OrbitControls from 'three-orbitcontrols';
         stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
         document.body.appendChild(stats.dom);
 
-        // gui
-        var gui = new dat.GUI();
+        // Axis
+        var axesHelper = new THREE.AxesHelper(300);
+        scene.add(axesHelper);
 
+
+        // Gui
+        var gui = new Dat.GUI();
+        var shutters = gui.addFolder('Shutters');
+        shutters.addColor(options, 'color').onChange(function () {
+            scene.traverse(function (mesh) {
+                if (mesh.name === 'frame' || mesh.name === 'louvre') {
+                    mesh.material.color.setHex(dec2hex(options.color));
+                }
+            });
+        });
+
+        shutters.add(options, 'layoutCode').onChange(function () {
+            layoutCode = options.layoutCode;
+            readLayoutCode();
+        });
+        shutters.open();
+    }
+
+    function dec2hex(i) {
+        var result = '0x000000';
+        if (i >= 0 && i <= 15) {
+            result = '0x00000' + i.toString(16);
+        } else if (i >= 16 && i <= 255) {
+            result = '0x0000' + i.toString(16);
+        } else if (i >= 256 && i <= 4095) {
+            result = '0x000' + i.toString(16);
+        } else if (i >= 4096 && i <= 65535) {
+            result = '0x00' + i.toString(16);
+        } else if (i >= 65535 && i <= 1048575) {
+            result = '0x0' + i.toString(16);
+        } else if (i >= 1048575) {
+            result = '0x' + i.toString(16);
+        }
+        if (result.length === 8) {
+            return result;
+        }
     }
 
     function readLayoutCode() {
+        for (var i = allDoorContainer.children.length - 1; i >= 0; i--) {
+            allDoorContainer.remove(allDoorContainer.children[i]);
+        }
         for (var $stringIndex = 0; $stringIndex < layoutCode.length; $stringIndex++) {
             createDoor(layoutCode[$stringIndex], $stringIndex);
         }
-        var allDoorContainerBox = new THREE.Box3().setFromObject(allDoorContainer);
-        allDoorContainerBox.getCenter(allDoorContainer.position).multiplyScalar(-1);
 
         scene.add(allDoorContainer);
-        camera.position.z = allDoorContainerBox.getSize(vector).x / 2 / Math.tan(Math.PI * 45 / 360);
+        allDoorContainer.position.x = 0;
+
+        var allDoorContainerBox = new THREE.Box3().setFromObject(allDoorContainer);
+        allDoorContainer.position.x = allDoorContainerBox.getCenter().x * -1;
+
+        camera.position.z = (allDoorContainerBox.getSize(vector).x / 2 / Math.tan(Math.PI * 45 / 360)) + 200;
     }
 
     function createDoor(type, index) {
@@ -99,7 +149,7 @@ import OrbitControls from 'three-orbitcontrols';
             ),
             doorBox = new THREE.Box3().setFromObject(door);
 
-        singleDoorContainer.add(door);
+        // singleDoorContainer.add(door);
         singleDoorContainer.position.x = doorBox.getSize(vector).x * index;
         allDoorContainer.add(singleDoorContainer);
 
@@ -164,12 +214,13 @@ import OrbitControls from 'three-orbitcontrols';
 
         for (var $frameIndex = 0; $frameIndex <= frames.length - 1;) {
             var frameOptions = frames[$frameIndex];
-            var frame = new THREE.Mesh(
+            frame = new THREE.Mesh(
                 new THREE.BoxGeometry(frameOptions.size.x, frameOptions.size.y, frameOptions.size.z),
                 new THREE.MeshLambertMaterial({
-                    color: frameOptions.color
+                    color: doorColor
                 })
             );
+            frame.name = 'frame';
             frame.position.x = frameOptions.position.x;
             frame.position.y = frameOptions.position.y;
             frame.position.z = frameOptions.position.z;
@@ -188,29 +239,23 @@ import OrbitControls from 'three-orbitcontrols';
             })
         );
 
-        var i = 1;
-        while (i <= louvreCount) {
+        for (var $louvreIndex = 0; $louvreIndex <= louvreCount;) {
             var newLouvre = louvre.clone();
-            newLouvre.name = 'louvrename';
-            newLouvre.position.y = ((target.getSize(vector).y / 2) - (louvreSizeY / 2) - louvreSizeY * (i - 1)) - doorFrameHorizontalSizeY;
+            newLouvre.name = 'louvre';
+            newLouvre.position.y = ((target.getSize(vector).y / 2) - (louvreSizeY / 2) - louvreSizeY * ($louvreIndex - 1)) - doorFrameHorizontalSizeY;
+            newLouvre.rotation.x = THREE.Math.degToRad(-50);
             parent.add(newLouvre);
-            i++;
+            $louvreIndex++;
         }
     }
 
     function animate() {
         stats.begin();
-        // group.rotation.y += speed;
-        scene.traverse(function (louvre) {
-            if (louvre.name === 'louvrename') {
-                louvre.rotation.x += THREE.Math.degToRad(1);
-            }
-        });
-        stats.end();
+        // scene.rotation.y += THREE.Math.degToRad(1);
 
         requestAnimationFrame(animate);
         renderer.render(scene, camera);
         controls.update();
+        stats.end();
     }
-
 })(jQuery);
