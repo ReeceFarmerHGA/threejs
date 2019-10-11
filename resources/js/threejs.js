@@ -13,24 +13,17 @@ import 'three-dat.gui';
 (function () {
     'use strict';
 
-    var scene, camera, renderer, controls, stats, frame, hemiLight;
+    var scene, camera, renderer, controls, stats, hemiLight;
     var vector = new THREE.Vector3();
-    var allDoorContainer = new THREE.Group();
 
     // Enviroment
     var layoutCode = 'LLR',
-        louvreSizeY = 23,
-        louvreSizeZ = 2,
+        louvreSizeY = 15,
+        louvreSizeZ = 1,
         doorColor = 0xffffff,
-        doorSizeX = 200,
-        doorSizeY = 500,
-        doorSizeZ = 20,
-        doorFrameVerticalSizeX = 20,
-        doorFrameVerticalSizeY = doorSizeY,
-        doorFrameVerticalSizeZ = doorSizeZ,
-        doorFrameHorizontalSizeX = doorSizeX,
-        doorFrameHorizontalSizeY = 30,
-        doorFrameHorizontalSizeZ = doorSizeZ * 0.5;
+        doorSizeX = 300,
+        doorSizeY = 300,
+        doorSizeZ = 20;
 
     var options = {
         layoutCode: layoutCode,
@@ -38,7 +31,7 @@ import 'three-dat.gui';
     };
 
     init();
-    readLayoutCode();
+    createBlind();
     animate();
 
     function init() {
@@ -76,25 +69,127 @@ import 'three-dat.gui';
         document.body.appendChild(stats.dom);
 
         // Axis
-        var axesHelper = new THREE.AxesHelper(300);
-        scene.add(axesHelper);
+        // var axesHelper = new THREE.AxesHelper(300);
+        // scene.add(axesHelper);
 
         // Gui
-        var gui = new Dat.GUI();
-        var shutters = gui.addFolder('Shutters');
-        shutters.addColor(options, 'color').onChange(function () {
-            scene.traverse(function (mesh) {
-                if (mesh.name === 'frame' || mesh.name === 'louvre') {
-                    mesh.material.color.setHex(dec2hex(options.color));
-                }
-            });
-        });
+        // var gui = new Dat.GUI();
+        // var shutters = gui.addFolder('Shutters');
+        // shutters.addColor(options, 'color').onChange(function () {
+        //     scene.traverse(function (mesh) {
+        //         if (mesh.name === 'frame' || mesh.name === 'louvre') {
+        //             mesh.material.color.setHex(dec2hex(options.color));
+        //         }
+        //     });
+        // });
+        //
+        // shutters.add(options, 'layoutCode').onChange(function () {
+        //     layoutCode = options.layoutCode;
+        //     readLayoutCode();
+        // });
+        // shutters.open();
+    }
 
-        shutters.add(options, 'layoutCode').onChange(function () {
-            layoutCode = options.layoutCode;
-            readLayoutCode();
-        });
-        shutters.open();
+    function createBlind() {
+        var singleBlind = new THREE.Group();
+
+        var blind = new THREE.Mesh(
+                new THREE.BoxGeometry(doorSizeX, doorSizeY, doorSizeZ),
+                new THREE.MeshLambertMaterial({
+                    color: doorColor,
+                    wireframe: true
+                })
+            ),
+            blindBox = new THREE.Box3().setFromObject(blind);
+
+        var blindTopper = new THREE.Mesh(
+                new THREE.BoxGeometry(doorSizeX, 20, doorSizeZ),
+                new THREE.MeshLambertMaterial({
+                    color: doorColor
+                })
+            ),
+            blindTopperBox = new THREE.Box3().setFromObject(blindTopper);
+        blindTopper.position.y = doorSizeY / 2 - (blindTopperBox.getSize(vector).y / 2);
+
+        var louvreArea = new THREE.Mesh(
+                new THREE.BoxGeometry(doorSizeX, doorSizeY - blindTopperBox.getSize(vector).y, doorSizeZ),
+                new THREE.MeshLambertMaterial({
+                    color: 0x00ff00,
+                    transparent: true,
+                    opacity: 0
+                })
+            ),
+            louvreAreaBox = new THREE.Box3().setFromObject(blindTopper);
+        louvreArea.position.y = -blindTopperBox.getSize(vector).y / 2;
+
+        var louvreString = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.3, 0.3, doorSizeY - blindTopperBox.getSize(vector).y),
+            new THREE.MeshLambertMaterial({
+                color: 0xffffff
+            })
+        );
+        var stringPositions = [{
+            x: -100,
+            y: 0,
+            z: (doorSizeZ / 8)
+        }, {
+            x: -100,
+            y: 0,
+            z: -(doorSizeZ / 8)
+        }, {
+            x: 100,
+            y: 0,
+            z: (doorSizeZ / 8)
+        }, {
+            x: 100,
+            y: 0,
+            z: -(doorSizeZ / 8)
+        }]
+        for (var stringInteger = 0; stringInteger + 1 <= 4; stringInteger++) {
+            var newString = louvreString.clone();
+            newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y, stringPositions[stringInteger].z)
+            singleBlind.add(newString);
+        }
+        singleBlind.add(blindTopper);
+        singleBlind.add(louvreArea);
+        createLouvres(singleBlind, louvreArea);
+        scene.add(singleBlind);
+
+        camera.position.z = (Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360)) + 200;
+    }
+
+    function createLouvres(parent, target) {
+        var targetBox = new THREE.Box3().setFromObject(target);
+        var louvreCount = Math.floor(targetBox.getSize(vector).y / louvreSizeY);
+
+        var louvre = new THREE.Mesh(
+            new THREE.BoxGeometry(targetBox.getSize(vector).x, louvreSizeY, louvreSizeZ),
+            new THREE.MeshLambertMaterial({
+                color: doorColor
+            })
+        );
+
+        for (var louvreIndex = 0; louvreIndex < louvreCount;) {
+            var newLouvre = louvre.clone();
+            newLouvre.name = 'louvre';
+            // newLouvre.position.y = ((targetBox.getSize(vector).y / 2) - (louvreSizeY / 2) - louvreSizeY * (louvreIndex - 1));
+            var louvreAreaHeight = targetBox.getSize(vector).y;
+            newLouvre.position.y = (target.position.y + louvreAreaHeight / 2 - louvreSizeY / 2) - louvreSizeY * louvreIndex;
+            newLouvre.rotation.x = THREE.Math.degToRad(-70);
+            parent.add(newLouvre);
+            louvreIndex++;
+        }
+    }
+
+    function animate() {
+        stats.begin();
+
+        // scene.rotation.y += THREE.Math.degToRad(1);;
+        requestAnimationFrame(animate);
+        renderer.render(scene, camera);
+        controls.update();
+
+        stats.end();
     }
 
     function dec2hex(i) {
@@ -115,154 +210,5 @@ import 'three-dat.gui';
         if (result.length === 8) {
             return result;
         }
-    }
-
-    function readLayoutCode() {
-        for (var i = allDoorContainer.children.length - 1; i >= 0; i--) {
-            allDoorContainer.remove(allDoorContainer.children[i]);
-        }
-        for (var stringIndex = 0; stringIndex < layoutCode.length; stringIndex++) {
-            createDoor(layoutCode[stringIndex], stringIndex);
-        }
-
-        scene.add(allDoorContainer);
-        allDoorContainer.position.x = 0;
-
-        var allDoorContainerBox = new THREE.Box3().setFromObject(allDoorContainer);
-        allDoorContainer.position.x = allDoorContainerBox.getCenter(vector).x * -1;
-
-        camera.position.z = (allDoorContainerBox.getSize(vector).x / 2 / Math.tan(Math.PI * 45 / 360)) + 200;
-    }
-
-    function createDoor(type, index) {
-        var singleDoorContainer = new THREE.Group();
-
-        var door = new THREE.Mesh(
-                new THREE.BoxGeometry(doorSizeX, doorSizeY, doorSizeZ),
-                new THREE.MeshLambertMaterial({
-                    color: 0x00ff00,
-                    wireframe: true
-                })
-            ),
-            doorBox = new THREE.Box3().setFromObject(door);
-
-        singleDoorContainer.position.x = doorBox.getSize(vector).x * index;
-        allDoorContainer.add(singleDoorContainer);
-
-        var louvreArea = new THREE.Mesh(
-            new THREE.BoxGeometry(doorSizeX - (doorFrameVerticalSizeX * 2), doorSizeY - (doorFrameHorizontalSizeY * 2), doorSizeZ),
-            new THREE.MeshLambertMaterial({
-                color: 0x00ff00,
-                wireframe: true
-            }));
-        louvreArea.position.set(doorFrameVerticalSizeX, doorFrameHorizontalSizeY, 0);
-        createFrames(singleDoorContainer, doorBox);
-        createLouvres(singleDoorContainer, louvreArea);
-    }
-
-    function createFrames(parent, target) {
-        var frames = [{
-            name: 'top',
-            color: doorColor,
-            size: {
-                x: doorFrameHorizontalSizeX,
-                y: doorFrameHorizontalSizeY,
-                z: doorFrameHorizontalSizeZ
-            },
-            position: {
-                x: 0,
-                y: target.getSize(vector).y / 2 - doorFrameHorizontalSizeY / 2,
-                z: 0
-            }
-        }, {
-            name: 'bottom',
-            color: doorColor,
-            size: {
-                x: doorFrameHorizontalSizeX,
-                y: doorFrameHorizontalSizeY,
-                z: doorFrameHorizontalSizeZ
-            },
-            position: {
-                x: 0,
-                y: (target.getSize(vector).y / 2 - doorFrameHorizontalSizeY / 2) * -1,
-                z: 0
-            }
-        }, {
-            name: 'left',
-            color: doorColor,
-            size: {
-                x: doorFrameVerticalSizeX,
-                y: doorFrameVerticalSizeY,
-                z: doorFrameVerticalSizeZ
-            },
-            position: {
-                x: (target.getSize(vector).x / 2 - doorFrameVerticalSizeX / 2) * -1,
-                y: 0,
-                z: 0
-            }
-        }, {
-            name: 'right',
-            color: doorColor,
-            size: {
-                x: doorFrameVerticalSizeX,
-                y: doorFrameVerticalSizeY,
-                z: doorFrameVerticalSizeZ
-            },
-            position: {
-                x: target.getSize(vector).x / 2 - doorFrameVerticalSizeX / 2,
-                y: 0,
-                z: 0
-            }
-        }];
-
-        for (var frameIndex = 0; frameIndex <= frames.length - 1;) {
-            var frameOptions = frames[frameIndex];
-            frame = new THREE.Mesh(
-                new THREE.BoxGeometry(frameOptions.size.x, frameOptions.size.y, frameOptions.size.z),
-                new THREE.MeshLambertMaterial({
-                    color: doorColor
-                })
-            );
-            frame.name = 'frame';
-            frame.position.x = frameOptions.position.x;
-            frame.position.y = frameOptions.position.y;
-            frame.position.z = frameOptions.position.z;
-            parent.add(frame);
-            frameIndex++;
-        };
-    }
-
-    function createLouvres(parent, target) {
-        var targetBox = new THREE.Box3().setFromObject(target);
-        var louvreCount = Math.floor(targetBox.getSize(vector).y / louvreSizeY);
-
-        var louvre = new THREE.Mesh(
-            new THREE.BoxGeometry(targetBox.getSize(vector).x, louvreSizeY, louvreSizeZ),
-            new THREE.MeshLambertMaterial({
-                color: doorColor
-            })
-        );
-
-        for (var louvreIndex = 0; louvreIndex < louvreCount;) {
-            var newLouvre = louvre.clone();
-            newLouvre.name = 'louvre';
-            newLouvre.position.y = ((targetBox.getSize(vector).y / 2) - (louvreSizeY / 2) - louvreSizeY * (louvreIndex - 1)) - doorFrameHorizontalSizeY;
-            newLouvre.rotation.x = THREE.Math.degToRad(-50);
-            parent.add(newLouvre);
-            louvreIndex++;
-        }
-    }
-
-    var int = 0.01;
-
-    function animate() {
-        stats.begin();
-
-        // scene.rotation.y += THREE.Math.degToRad(1);;
-        requestAnimationFrame(animate);
-        renderer.render(scene, camera);
-        controls.update();
-
-        stats.end();
     }
 })(jQuery);
