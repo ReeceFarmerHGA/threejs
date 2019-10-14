@@ -38,6 +38,20 @@ import 'three-dat.gui';
         // Scene
         scene = new THREE.Scene();
 
+        var geometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
+        var texture = new THREE.TextureLoader().load('/images/grass.jpg');
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(6, 6);
+        var material = new THREE.MeshLambertMaterial({
+            map: texture
+        });
+        var floor = new THREE.Mesh(geometry, material);
+        floor.material.side = THREE.DoubleSide;
+        floor.rotation.x = THREE.Math.degToRad(90);
+        floor.position.y = -(doorSizeY / 2);
+        scene.add(floor);
+
         // Lights
         hemiLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1);
         hemiLight.position.set(-300, 400, 200);

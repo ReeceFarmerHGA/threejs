@@ -64508,7 +64508,20 @@ __webpack_require__.r(__webpack_exports__);
 
   function init() {
     // Scene
-    scene = new three__WEBPACK_IMPORTED_MODULE_1__["Scene"](); // Lights
+    scene = new three__WEBPACK_IMPORTED_MODULE_1__["Scene"]();
+    var geometry = new three__WEBPACK_IMPORTED_MODULE_1__["PlaneGeometry"](1000, 1000, 1, 1);
+    var texture = new three__WEBPACK_IMPORTED_MODULE_1__["TextureLoader"]().load('/images/grass.jpg');
+    texture.wrapS = three__WEBPACK_IMPORTED_MODULE_1__["RepeatWrapping"];
+    texture.wrapT = three__WEBPACK_IMPORTED_MODULE_1__["RepeatWrapping"];
+    texture.repeat.set(6, 6);
+    var material = new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
+      map: texture
+    });
+    var floor = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](geometry, material);
+    floor.material.side = three__WEBPACK_IMPORTED_MODULE_1__["DoubleSide"];
+    floor.rotation.x = three__WEBPACK_IMPORTED_MODULE_1__["Math"].degToRad(90);
+    floor.position.y = -(doorSizeY / 2);
+    scene.add(floor); // Lights
 
     hemiLight = new three__WEBPACK_IMPORTED_MODULE_1__["HemisphereLight"](0xffffff, 0xaaaaaa, 1);
     hemiLight.position.set(-300, 400, 200);
