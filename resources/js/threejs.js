@@ -9,12 +9,17 @@ import Stats from 'stats.js';
 import OrbitControls from 'three-orbitcontrols';
 import Dat from 'dat.gui';
 import 'three-dat.gui';
+import anime from 'animejs/lib/anime.es.js';
 
 (function () {
     'use strict';
 
-    var scene, camera, renderer, controls, stats, hemiLight;
+    // Reusable vars
+    var scene, camera, renderer, controls, stats, hemiLight, louvreArray;
     var vector = new THREE.Vector3();
+
+    // Animations
+    var rotateLouvres;
 
     // Enviroment
     var layoutCode = 'LLR',
@@ -27,37 +32,21 @@ import 'three-dat.gui';
 
     var options = {
         layoutCode: layoutCode,
-        color: doorColor
+        color: doorColor,
+        toggleLouvres: false
     };
 
     init();
-    createBlind();
     animate();
 
     function init() {
         // Scene
         scene = new THREE.Scene();
 
-        var geometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
-        var texture = new THREE.TextureLoader().load('/images/grass.jpg');
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(6, 6);
-        var material = new THREE.MeshLambertMaterial({
-            map: texture
-        });
-        var floor = new THREE.Mesh(geometry, material);
-        floor.material.side = THREE.DoubleSide;
-        floor.rotation.x = THREE.Math.degToRad(90);
-        floor.position.y = -(doorSizeY / 2);
-        scene.add(floor);
+        createFloor();
 
         // Lights
-        hemiLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1);
-        hemiLight.position.set(-300, 400, 200);
-        scene.add(hemiLight);
-        // var hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
-        // scene.add(hemiLightHelper);
+        createLights();
 
         // Camera
         camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 9999);
@@ -86,22 +75,80 @@ import 'three-dat.gui';
         // var axesHelper = new THREE.AxesHelper(300);
         // scene.add(axesHelper);
 
+        // Create a blind
+        createBlind();
+
+        // Create tweens
+        createAnimations();
+
         // Gui
-        // var gui = new Dat.GUI();
-        // var shutters = gui.addFolder('Shutters');
-        // shutters.addColor(options, 'color').onChange(function () {
-        //     scene.traverse(function (mesh) {
-        //         if (mesh.name === 'frame' || mesh.name === 'louvre') {
-        //             mesh.material.color.setHex(dec2hex(options.color));
-        //         }
-        //     });
-        // });
-        //
+        createGui();
+    }
+
+    function createFloor() {
+        var geometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
+
+        var texture = new THREE.TextureLoader().load('/images/grass.jpg');
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(6, 6);
+
+        var material = new THREE.MeshLambertMaterial({
+            map: texture
+        });
+
+        var floor = new THREE.Mesh(geometry, material);
+        floor.material.side = THREE.DoubleSide;
+        floor.rotation.x = THREE.Math.degToRad(90);
+        floor.position.y = -(doorSizeY / 2);
+
+        // scene.add(floor);
+    }
+
+    function createLights() {
+        hemiLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1);
+        hemiLight.position.set(-300, 400, 200);
+        scene.add(hemiLight);
+        // var hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
+        // scene.add(hemiLightHelper);
+    }
+
+    function createGui() {
+        var gui = new Dat.GUI();
+        var shutters = gui.addFolder('Shutters');
+        shutters.addColor(options, 'color').onChange(function () {
+            scene.traverse(function (mesh) {
+                if (mesh.name === 'frame' || mesh.name === 'louvre') {
+                    mesh.material.color.setHex(dec2hex(options.color));
+                }
+            });
+        });
+        shutters.add(options, 'toggleLouvres').onChange(function () {
+            rotateLouvres.finished.then(() => {
+
+            });
+            rotateLouvres.reverse();
+            rotateLouvres.play();
+        });
+
         // shutters.add(options, 'layoutCode').onChange(function () {
         //     layoutCode = options.layoutCode;
         //     readLayoutCode();
         // });
-        // shutters.open();
+        shutters.open();
+    }
+
+    function createAnimations() {
+        rotateLouvres = anime({
+            targets: louvreArray,
+            x: [{
+                value: THREE.Math.degToRad(170),
+                duration: 500
+            }],
+            easing: 'easeInCubic',
+            autoplay: false
+        });
+        rotateLouvres.reverse();
     }
 
     function createBlind() {
@@ -158,10 +205,10 @@ import 'three-dat.gui';
             x: 100,
             y: 0,
             z: -(doorSizeZ / 8)
-        }]
+        }];
         for (var stringInteger = 0; stringInteger + 1 <= 4; stringInteger++) {
             var newString = louvreString.clone();
-            newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y, stringPositions[stringInteger].z)
+            newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y, stringPositions[stringInteger].z);
             singleBlind.add(newString);
         }
         singleBlind.add(blindTopper);
@@ -176,34 +223,43 @@ import 'three-dat.gui';
         var targetBox = new THREE.Box3().setFromObject(target);
         var louvreCount = Math.floor(targetBox.getSize(vector).y / louvreSizeY);
 
+        var texture = new THREE.TextureLoader().load('/images/wood.jpg');
+        texture.wrapS = THREE.RepeatWrapping;
         var louvre = new THREE.Mesh(
             new THREE.BoxGeometry(targetBox.getSize(vector).x, louvreSizeY, louvreSizeZ),
             new THREE.MeshLambertMaterial({
-                color: doorColor
+                color: doorColor,
+                // map: texture
             })
         );
 
+        louvreArray = [];
         for (var louvreIndex = 0; louvreIndex < louvreCount;) {
             var newLouvre = louvre.clone();
             newLouvre.name = 'louvre';
-            // newLouvre.position.y = ((targetBox.getSize(vector).y / 2) - (louvreSizeY / 2) - louvreSizeY * (louvreIndex - 1));
+
             var louvreAreaHeight = targetBox.getSize(vector).y;
             newLouvre.position.y = (target.position.y + louvreAreaHeight / 2 - louvreSizeY / 2) - louvreSizeY * louvreIndex;
-            newLouvre.rotation.x = THREE.Math.degToRad(-70);
+            newLouvre.rotation.x = THREE.Math.degToRad(90);
+
+            louvreArray.push(newLouvre.rotation);
             parent.add(newLouvre);
             louvreIndex++;
         }
     }
 
     function animate() {
-        stats.begin();
-
-        // scene.rotation.y += THREE.Math.degToRad(1);;
-        requestAnimationFrame(animate);
+        // Render the scene
         renderer.render(scene, camera);
+
+        // Restart the loop
+        requestAnimationFrame(animate);
+
+        // Update the controls
         controls.update();
 
-        stats.end();
+        // Update the stats
+        stats.update();
     }
 
     function dec2hex(i) {
