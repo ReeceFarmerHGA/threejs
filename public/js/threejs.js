@@ -68845,7 +68845,7 @@ __webpack_require__.r(__webpack_exports__);
     scaleStrings = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
       targets: stringArray,
       y: [{
-        value: 0.2,
+        value: 2 * (louvreSizeZ * louvreArrayPositionNew.length),
         duration: 1000
       }],
       easing: 'easeInOutSine',
@@ -68853,6 +68853,8 @@ __webpack_require__.r(__webpack_exports__);
     });
     scaleStrings.reverse();
   }
+
+  console.log(louvreArrayPositionNew.length);
 
   function createBlind() {
     var singleBlind = new three__WEBPACK_IMPORTED_MODULE_1__["Group"]();
@@ -68871,11 +68873,13 @@ __webpack_require__.r(__webpack_exports__);
       transparent: true,
       opacity: 0
     })),
-        louvreAreaBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(blindTopper);
+        louvreAreaBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(louvreArea);
     louvreArea.position.y = -blindTopperBox.getSize(vector).y / 2;
-    var louvreString = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["CylinderGeometry"](0.3, 0.3, doorSizeY - blindTopperBox.getSize(vector).y - louvreSizeY), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
+    var louvreString = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["CylinderGeometry"](0.3, 0.3, 1), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
       color: 0xffffff
     }));
+    louvreString.scale.setY(louvreAreaBox.getSize(vector).y);
+    louvreString.geometry.translate(0, -0.5, 0);
     var stringPositions = [{
       x: -100,
       y: 0,
@@ -68896,13 +68900,9 @@ __webpack_require__.r(__webpack_exports__);
 
     for (var stringInteger = 0; stringInteger + 1 <= stringPositions.length; stringInteger++) {
       var newString = louvreString.clone();
-      newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y, stringPositions[stringInteger].z); // stringArray.push({
-      //     position: newString.position.y,
-      //     scale: newString.scale.y
-      // });
-
-      stringArray.push(newString);
-      singleBlind.add(newString);
+      newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y, stringPositions[stringInteger].z);
+      stringArray.push(newString.scale);
+      blindTopper.add(newString);
     }
 
     singleBlind.add(blindTopper);

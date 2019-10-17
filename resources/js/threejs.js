@@ -164,7 +164,7 @@ import * as Ammo from 'ammo.js';
         scaleStrings = anime({
             targets: stringArray,
             y: [{
-                value: 0.2,
+                value: 2 * (louvreSizeZ * louvreArrayPositionNew.length),
                 duration: 1000
             }],
             easing: 'easeInOutSine',
@@ -172,6 +172,7 @@ import * as Ammo from 'ammo.js';
         });
         scaleStrings.reverse();
     }
+    console.log(louvreArrayPositionNew.length);
 
     function createBlind() {
         var singleBlind = new THREE.Group();
@@ -202,15 +203,17 @@ import * as Ammo from 'ammo.js';
                     opacity: 0
                 })
             ),
-            louvreAreaBox = new THREE.Box3().setFromObject(blindTopper);
+            louvreAreaBox = new THREE.Box3().setFromObject(louvreArea);
         louvreArea.position.y = -blindTopperBox.getSize(vector).y / 2;
 
         var louvreString = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.3, 0.3, doorSizeY - blindTopperBox.getSize(vector).y - louvreSizeY),
+            new THREE.CylinderGeometry(0.3, 0.3, 1),
             new THREE.MeshLambertMaterial({
                 color: 0xffffff
             })
         );
+        louvreString.scale.setY(louvreAreaBox.getSize(vector).y);
+        louvreString.geometry.translate(0, -0.5, 0);
         var stringPositions = [{
             x: -100,
             y: 0,
@@ -231,12 +234,8 @@ import * as Ammo from 'ammo.js';
         for (var stringInteger = 0; stringInteger + 1 <= stringPositions.length; stringInteger++) {
             var newString = louvreString.clone();
             newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y, stringPositions[stringInteger].z);
-            // stringArray.push({
-            //     position: newString.position.y,
-            //     scale: newString.scale.y
-            // });
-            stringArray.push(newString);
-            singleBlind.add(newString);
+            stringArray.push(newString.scale);
+            blindTopper.add(newString);
         }
 
         singleBlind.add(blindTopper);
