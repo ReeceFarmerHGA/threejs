@@ -20,6 +20,7 @@
         </main>
     </div>
     @auth
+        <script src="{{ mix('js/ammo.js') }}"></script>
         <script src="{{ mix('js/manifest.js') }}" defer></script>
         <script src="{{ mix('js/vendor.js') }}" defer></script>
         <script src="{{ mix('js/threejs.js') }}" defer></script>

@@ -8,22 +8,22 @@ import * as THREE from 'three';
 import Stats from 'stats.js';
 import OrbitControls from 'three-orbitcontrols';
 import Dat from 'dat.gui';
-import 'three-dat.gui';
 import anime from 'animejs/lib/anime.es.js';
+import * as Ammo from 'ammo.js';
 
 (function () {
     'use strict';
 
     // Reusable vars
-    var scene, camera, renderer, controls, stats, hemiLight, louvreArray;
+    var scene, camera, renderer, controls, stats, hemiLight;
     var vector = new THREE.Vector3();
 
     // Animations
-    var rotateLouvres;
+    var louvreArrayRotation, louvreArrayPosition, louvreArrayPositionNew, stringArray = [];
+    var rotateLouvres, positionLouvres, scaleStrings;
 
     // Enviroment
-    var layoutCode = 'LLR',
-        louvreSizeY = 15,
+    var louvreSizeY = 15,
         louvreSizeZ = 1,
         doorColor = 0xffffff,
         doorSizeX = 300,
@@ -31,9 +31,9 @@ import anime from 'animejs/lib/anime.es.js';
         doorSizeZ = 20;
 
     var options = {
-        layoutCode: layoutCode,
         color: doorColor,
-        toggleLouvres: false
+        toggleLouvreRotation: false,
+        toggleLouvrePosition: false
     };
 
     init();
@@ -43,6 +43,7 @@ import anime from 'animejs/lib/anime.es.js';
         // Scene
         scene = new THREE.Scene();
 
+        // Floor
         createFloor();
 
         // Lights
@@ -58,6 +59,7 @@ import anime from 'animejs/lib/anime.es.js';
             alpha: true
         });
         renderer.setSize(window.innerWidth, window.innerHeight);
+
         document.body.appendChild(renderer.domElement);
 
         // Controls
@@ -72,7 +74,7 @@ import anime from 'animejs/lib/anime.es.js';
         document.body.appendChild(stats.dom);
 
         // Axis
-        // var axesHelper = new THREE.AxesHelper(300);
+        // var axesHelper = new THREE.AxesHelper(200);
         // scene.add(axesHelper);
 
         // Create a blind
@@ -123,24 +125,22 @@ import anime from 'animejs/lib/anime.es.js';
                 }
             });
         });
-        shutters.add(options, 'toggleLouvres').onChange(function () {
-            rotateLouvres.finished.then(() => {
-
-            });
+        shutters.add(options, 'toggleLouvreRotation').name('Toggle Rotation').onChange(function () {
             rotateLouvres.reverse();
             rotateLouvres.play();
         });
-
-        // shutters.add(options, 'layoutCode').onChange(function () {
-        //     layoutCode = options.layoutCode;
-        //     readLayoutCode();
-        // });
+        shutters.add(options, 'toggleLouvrePosition').name('Toggle Louvres').onChange(function () {
+            positionLouvres.reverse();
+            positionLouvres.play();
+            scaleStrings.reverse();
+            scaleStrings.play();
+        });
         shutters.open();
     }
 
     function createAnimations() {
         rotateLouvres = anime({
-            targets: louvreArray,
+            targets: louvreArrayRotation,
             x: [{
                 value: THREE.Math.degToRad(170),
                 duration: 500
@@ -149,6 +149,28 @@ import anime from 'animejs/lib/anime.es.js';
             autoplay: false
         });
         rotateLouvres.reverse();
+
+        positionLouvres = anime({
+            targets: louvreArrayPosition,
+            y: [{
+                value: (elm, index, t) => louvreArrayPositionNew[index],
+                duration: 1000
+            }],
+            easing: 'easeInOutSine',
+            autoplay: false
+        });
+        positionLouvres.reverse();
+
+        scaleStrings = anime({
+            targets: stringArray,
+            y: [{
+                value: 0.2,
+                duration: 1000
+            }],
+            easing: 'easeInOutSine',
+            autoplay: false
+        });
+        scaleStrings.reverse();
     }
 
     function createBlind() {
@@ -184,7 +206,7 @@ import anime from 'animejs/lib/anime.es.js';
         louvreArea.position.y = -blindTopperBox.getSize(vector).y / 2;
 
         var louvreString = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.3, 0.3, doorSizeY - blindTopperBox.getSize(vector).y),
+            new THREE.CylinderGeometry(0.3, 0.3, doorSizeY - blindTopperBox.getSize(vector).y - louvreSizeY),
             new THREE.MeshLambertMaterial({
                 color: 0xffffff
             })
@@ -206,13 +228,18 @@ import anime from 'animejs/lib/anime.es.js';
             y: 0,
             z: -(doorSizeZ / 8)
         }];
-        for (var stringInteger = 0; stringInteger + 1 <= 4; stringInteger++) {
+        for (var stringInteger = 0; stringInteger + 1 <= stringPositions.length; stringInteger++) {
             var newString = louvreString.clone();
             newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y, stringPositions[stringInteger].z);
+            // stringArray.push({
+            //     position: newString.position.y,
+            //     scale: newString.scale.y
+            // });
+            stringArray.push(newString);
             singleBlind.add(newString);
         }
+
         singleBlind.add(blindTopper);
-        singleBlind.add(louvreArea);
         createLouvres(singleBlind, louvreArea);
         scene.add(singleBlind);
 
@@ -220,8 +247,9 @@ import anime from 'animejs/lib/anime.es.js';
     }
 
     function createLouvres(parent, target) {
-        var targetBox = new THREE.Box3().setFromObject(target);
-        var louvreCount = Math.floor(targetBox.getSize(vector).y / louvreSizeY);
+        var targetBox = new THREE.Box3().setFromObject(target); // Get the bounding box of the target
+        var louvreAreaHeight = targetBox.getSize(vector).y;
+        var louvreCount = Math.floor(louvreAreaHeight / louvreSizeY); // Count how many louvres fit into the box
 
         var texture = new THREE.TextureLoader().load('/images/wood.jpg');
         texture.wrapS = THREE.RepeatWrapping;
@@ -229,20 +257,21 @@ import anime from 'animejs/lib/anime.es.js';
             new THREE.BoxGeometry(targetBox.getSize(vector).x, louvreSizeY, louvreSizeZ),
             new THREE.MeshLambertMaterial({
                 color: doorColor,
-                // map: texture
+                map: texture
             })
         );
+        louvre.name = 'louvre';
+        louvre.rotation.x = THREE.Math.degToRad(90);
 
-        louvreArray = [];
+        louvreArrayRotation = []; // Collect the louvres for rotating later
+        louvreArrayPosition = []; // Collect the louvres for positioning later
+        louvreArrayPositionNew = []; // Collect the new position values
         for (var louvreIndex = 0; louvreIndex < louvreCount;) {
             var newLouvre = louvre.clone();
-            newLouvre.name = 'louvre';
-
-            var louvreAreaHeight = targetBox.getSize(vector).y;
-            newLouvre.position.y = (target.position.y + louvreAreaHeight / 2 - louvreSizeY / 2) - louvreSizeY * louvreIndex;
-            newLouvre.rotation.x = THREE.Math.degToRad(90);
-
-            louvreArray.push(newLouvre.rotation);
+            newLouvre.position.y = ((louvreAreaHeight / 2 - louvreSizeY / 2) + target.position.y) - (louvreSizeY * louvreIndex);
+            louvreArrayPositionNew.push(((louvreAreaHeight / 2 - louvreSizeZ / 2) + target.position.y) - (louvreSizeZ * louvreIndex));
+            louvreArrayRotation.push(newLouvre.rotation);
+            louvreArrayPosition.push(newLouvre.position);
             parent.add(newLouvre);
             louvreIndex++;
         }
