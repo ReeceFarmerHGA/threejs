@@ -9,31 +9,34 @@ import Stats from 'stats.js';
 import OrbitControls from 'three-orbitcontrols';
 import Dat from 'dat.gui';
 import anime from 'animejs/lib/anime.es.js';
-import * as Ammo from 'ammo.js';
+// import * as Ammo from 'ammo.js';
 
 (function () {
     'use strict';
 
     // Reusable vars
-    var scene, camera, renderer, controls, stats, hemiLight;
+    var scene, camera, renderer, controls, stats, hemiLight, spotLightFront, tassle, louvreToggle1;
     var vector = new THREE.Vector3();
 
     // Animations
-    var louvreArrayRotation, louvreArrayPosition, louvreArrayPositionNew, stringArray = [];
-    var rotateLouvres, positionLouvres, scaleStrings;
+    var louvreArrayRotation, louvreArrayPosition, louvreArrayPositionNew, stringArray, toggleStrings;
+    var rotateLouvres, positionLouvres, scaleStrings, toggleLouvreStrings;
 
     // Enviroment
-    var louvreSizeY = 15,
+    var louvreSizeY = 13,
         louvreSizeZ = 1,
-        doorColor = 0xffffff,
+        stringColor = 0xffffff,
+        doorColor = 0xFEF2DD,
+        louvreColour = 0x9ebdc6,
         doorSizeX = 300,
         doorSizeY = 300,
         doorSizeZ = 20;
 
     var options = {
-        color: doorColor,
+        color: 0x9ebdc6,
         toggleLouvreRotation: false,
-        toggleLouvrePosition: false
+        toggleLouvrePosition: false,
+        cameraHeight: 100,
     };
 
     init();
@@ -56,8 +59,11 @@ import * as Ammo from 'ammo.js';
         // Renderer
         renderer = new THREE.WebGLRenderer({
             antialias: true,
-            alpha: true
+            alpha: true,
+            shadowMapEnabled: true,
+            shadowMapType: THREE.PCFSoftShadowMap
         });
+        renderer.shadowMap.enabled = true;
         renderer.setSize(window.innerWidth, window.innerHeight);
 
         document.body.appendChild(renderer.domElement);
@@ -85,7 +91,24 @@ import * as Ammo from 'ammo.js';
 
         // Gui
         createGui();
+
+        var cube = new THREE.Mesh(
+            new THREE.BoxGeometry(doorSizeX, doorSizeY, doorSizeZ),
+            new THREE.MeshLambertMaterial({
+                color: doorColor
+            })
+        );
+        cube.position.z = 50;
+
+        scene.traverse(function (mesh) {
+            if (mesh.type === 'Mesh') {
+                mesh.castShadow = true;
+                mesh.recieveShadow = true;
+            }
+        });
     }
+
+
 
     function createFloor() {
         var geometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
@@ -99,20 +122,39 @@ import * as Ammo from 'ammo.js';
             map: texture
         });
 
-        var floor = new THREE.Mesh(geometry, material);
-        floor.material.side = THREE.DoubleSide;
-        floor.rotation.x = THREE.Math.degToRad(90);
-        floor.position.y = -(doorSizeY / 2);
+        var floor_geometry = new THREE.PlaneGeometry(1000, 1000);
+        var floor_material = new THREE.MeshPhongMaterial({
+            color: 0xffffff
+        });
+        var floor = new THREE.Mesh(floor_geometry, floor_material);
+        floor.position.set(0, -doorSizeY / 2 / 2, 0);
+        floor.rotation.x -= Math.PI / 2;
+        floor.receiveShadow = true;
+        floor.castShadow = false;
 
         // scene.add(floor);
     }
 
     function createLights() {
         hemiLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1);
-        hemiLight.position.set(-300, 400, 200);
+        hemiLight.position.set(-300, 300, 200);
         scene.add(hemiLight);
+
         // var hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
         // scene.add(hemiLightHelper);
+
+        // spotlights
+        spotLightFront = new THREE.SpotLight(0xffffff);
+        spotLightFront.position.set(0, 400, 400);
+        // scene.add(spotLightFront);
+        // spotLightFront.castShadow = true;
+        // spotLightFront.shadowCameraVisible = true;
+        // spotLightFront.shadow.camera.near = 1;
+        // spotLightFront.shadow.camera.far = 1000;
+        // spotLightFront.shadow.radius = 1;
+
+        // var spotLightHelper = new THREE.SpotLightHelper(spotLightFront, 10);
+        // scene.add(spotLightHelper);
     }
 
     function createGui() {
@@ -125,9 +167,15 @@ import * as Ammo from 'ammo.js';
                 }
             });
         });
+        shutters.add(options, 'cameraHeight').name('Camera height').onChange(function () {
+            spotLightFront.position.y = options.cameraHeight;
+            spotLightFront.rotation.x -= THREE.Math.degToRad(1);
+        });
         shutters.add(options, 'toggleLouvreRotation').name('Toggle Rotation').onChange(function () {
             rotateLouvres.reverse();
             rotateLouvres.play();
+            toggleLouvreStrings.reverse();
+            toggleLouvreStrings.play();
         });
         shutters.add(options, 'toggleLouvrePosition').name('Toggle Louvres').onChange(function () {
             positionLouvres.reverse();
@@ -142,7 +190,7 @@ import * as Ammo from 'ammo.js';
         rotateLouvres = anime({
             targets: louvreArrayRotation,
             x: [{
-                value: THREE.Math.degToRad(170),
+                value: THREE.Math.degToRad(160),
                 duration: 500
             }],
             easing: 'easeInCubic',
@@ -171,8 +219,25 @@ import * as Ammo from 'ammo.js';
             autoplay: false
         });
         scaleStrings.reverse();
+
+        toggleLouvreStrings = anime({
+            targets: toggleStrings,
+            y: [{
+                value: (elm, index, t) => index === 0 ? elm.y / 2 : elm.y * 1.25,
+                duration: 500
+            }],
+            easing: 'easeInOutSine',
+            autoplay: false,
+            update: function (anim) {
+                // tassle.scale.y = 1 / louvreToggle1.scale.y;
+                // tassle.position.y = -(louvreToggle1.scale.y * tassle.scale.y);
+                // console.log(louvreToggle1.scale.y);
+                // console.log(louvreToggle1.scale.y, tassle.scale.y);
+                // tassle.position.y = louvreToggle1.scale.y * tassle.scale.y;
+            }
+        });
+        toggleLouvreStrings.reverse();
     }
-    console.log(louvreArrayPositionNew.length);
 
     function createBlind() {
         var singleBlind = new THREE.Group();
@@ -209,28 +274,29 @@ import * as Ammo from 'ammo.js';
         var louvreString = new THREE.Mesh(
             new THREE.CylinderGeometry(0.3, 0.3, 1),
             new THREE.MeshLambertMaterial({
-                color: 0xffffff
+                color: stringColor
             })
         );
         louvreString.scale.setY(louvreAreaBox.getSize(vector).y);
         louvreString.geometry.translate(0, -0.5, 0);
         var stringPositions = [{
-            x: -100,
+            x: -75,
             y: 0,
             z: (doorSizeZ / 8)
         }, {
-            x: -100,
+            x: -75,
             y: 0,
             z: -(doorSizeZ / 8)
         }, {
-            x: 100,
+            x: 75,
             y: 0,
             z: (doorSizeZ / 8)
         }, {
-            x: 100,
+            x: 75,
             y: 0,
             z: -(doorSizeZ / 8)
         }];
+        stringArray = [];
         for (var stringInteger = 0; stringInteger + 1 <= stringPositions.length; stringInteger++) {
             var newString = louvreString.clone();
             newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y, stringPositions[stringInteger].z);
@@ -238,10 +304,41 @@ import * as Ammo from 'ammo.js';
             blindTopper.add(newString);
         }
 
+        var pullCordString = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.5, 0.5, 1),
+            new THREE.MeshLambertMaterial({
+                color: stringColor
+            })
+        );
+        pullCordString.geometry.translate(0, -0.5, 0);
+        tassle = new THREE.Mesh(
+            new THREE.CylinderGeometry(2, 3, 10),
+            new THREE.MeshLambertMaterial({
+                color: doorColor
+            })
+        );
+
+        louvreToggle1 = pullCordString.clone();
+        louvreToggle1.scale.setY(louvreAreaBox.getSize(vector).y / 3);
+        louvreToggle1.position.x = ((blindBox.getSize(vector).x / 2) - 30) * -1;
+        louvreToggle1.position.z = (doorSizeZ / 2) - 2;
+        tassle.scale.y = 1 / louvreToggle1.scale.y;
+        tassle.geometry.translate(0, -louvreToggle1.scale.y, 0);
+        louvreToggle1.add(tassle);
+        var louvreToggle2 = louvreToggle1.clone();
+        louvreToggle2.position.x = ((blindBox.getSize(vector).x / 2) - 40) * -1;
+
+        blindTopper.add(louvreToggle1);
+        // blindTopper.add(louvreToggle2);
+        toggleStrings = [];
+        toggleStrings.push(louvreToggle1.scale);
+        toggleStrings.push(louvreToggle2.scale);
+
         singleBlind.add(blindTopper);
         createLouvres(singleBlind, louvreArea);
         scene.add(singleBlind);
 
+        // Make sure the camera shows all
         camera.position.z = (Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360)) + 200;
     }
 
@@ -255,10 +352,12 @@ import * as Ammo from 'ammo.js';
         var louvre = new THREE.Mesh(
             new THREE.BoxGeometry(targetBox.getSize(vector).x, louvreSizeY, louvreSizeZ),
             new THREE.MeshLambertMaterial({
-                color: doorColor,
-                map: texture
+                color: louvreColour
             })
         );
+        louvre.castShadow = true;
+        louvre.receiveShadow = true;
+
         louvre.name = 'louvre';
         louvre.rotation.x = THREE.Math.degToRad(90);
 
