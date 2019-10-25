@@ -15,12 +15,14 @@ import anime from 'animejs/lib/anime.es.js';
     'use strict';
 
     // Reusable vars
-    var scene, camera, renderer, controls, stats, hemiLight, spotLightFront, tassle, louvreToggle1;
+    var scene, camera, renderer, controls, stats, hemiLight, louvreCount;
     var vector = new THREE.Vector3();
 
     // Animations
-    var louvreArrayRotation, louvreArrayPosition, louvreArrayPositionNew, stringArray, toggleStrings;
-    var rotateLouvres, positionLouvres, scaleStrings, toggleLouvreStrings;
+    var louvreArrayRotation, louvreArrayPosition, louvreArrayPositionNew, stringArray, tasselsToAnimate = [],
+        ropes = [],
+        tasselAnimations = {};
+    var rotateLouvres, positionLouvres, animateTassels;
 
     // Enviroment
     var louvreSizeY = 13,
@@ -30,13 +32,12 @@ import anime from 'animejs/lib/anime.es.js';
         louvreColour = 0x9ebdc6,
         doorSizeX = 300,
         doorSizeY = 300,
-        doorSizeZ = 20;
+        doorSizeZ = 24;
 
     var options = {
         color: 0x9ebdc6,
         toggleLouvreRotation: false,
-        toggleLouvrePosition: false,
-        cameraHeight: 100,
+        toggleLouvrePosition: false
     };
 
     init();
@@ -45,9 +46,6 @@ import anime from 'animejs/lib/anime.es.js';
     function init() {
         // Scene
         scene = new THREE.Scene();
-
-        // Floor
-        createFloor();
 
         // Lights
         createLights();
@@ -65,7 +63,6 @@ import anime from 'animejs/lib/anime.es.js';
         });
         renderer.shadowMap.enabled = true;
         renderer.setSize(window.innerWidth, window.innerHeight);
-
         document.body.appendChild(renderer.domElement);
 
         // Controls
@@ -83,56 +80,37 @@ import anime from 'animejs/lib/anime.es.js';
         // var axesHelper = new THREE.AxesHelper(200);
         // scene.add(axesHelper);
 
+        // Floor
+        // createFloor();
+
         // Create a blind
         createBlind();
 
-        // Create tweens
+        // Create animations
         createAnimations();
 
         // Gui
         createGui();
-
-        var cube = new THREE.Mesh(
-            new THREE.BoxGeometry(doorSizeX, doorSizeY, doorSizeZ),
-            new THREE.MeshLambertMaterial({
-                color: doorColor
-            })
-        );
-        cube.position.z = 50;
-
-        scene.traverse(function (mesh) {
-            if (mesh.type === 'Mesh') {
-                mesh.castShadow = true;
-                mesh.recieveShadow = true;
-            }
-        });
     }
 
-
-
     function createFloor() {
-        var geometry = new THREE.PlaneGeometry(1000, 1000, 1, 1);
-
         var texture = new THREE.TextureLoader().load('/images/grass.jpg');
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
         texture.repeat.set(6, 6);
 
-        var material = new THREE.MeshLambertMaterial({
-            map: texture
-        });
-
-        var floor_geometry = new THREE.PlaneGeometry(1000, 1000);
-        var floor_material = new THREE.MeshPhongMaterial({
-            color: 0xffffff
-        });
-        var floor = new THREE.Mesh(floor_geometry, floor_material);
+        var floor = new THREE.Mesh(
+            new THREE.PlaneGeometry(1000, 1000),
+            new THREE.MeshPhongMaterial({
+                color: 0xffffff
+            })
+        );
         floor.position.set(0, -doorSizeY / 2 / 2, 0);
         floor.rotation.x -= Math.PI / 2;
         floor.receiveShadow = true;
         floor.castShadow = false;
 
-        // scene.add(floor);
+        scene.add(floor);
     }
 
     function createLights() {
@@ -142,19 +120,6 @@ import anime from 'animejs/lib/anime.es.js';
 
         // var hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
         // scene.add(hemiLightHelper);
-
-        // spotlights
-        spotLightFront = new THREE.SpotLight(0xffffff);
-        spotLightFront.position.set(0, 400, 400);
-        // scene.add(spotLightFront);
-        // spotLightFront.castShadow = true;
-        // spotLightFront.shadowCameraVisible = true;
-        // spotLightFront.shadow.camera.near = 1;
-        // spotLightFront.shadow.camera.far = 1000;
-        // spotLightFront.shadow.radius = 1;
-
-        // var spotLightHelper = new THREE.SpotLightHelper(spotLightFront, 10);
-        // scene.add(spotLightHelper);
     }
 
     function createGui() {
@@ -167,21 +132,19 @@ import anime from 'animejs/lib/anime.es.js';
                 }
             });
         });
-        shutters.add(options, 'cameraHeight').name('Camera height').onChange(function () {
-            spotLightFront.position.y = options.cameraHeight;
-            spotLightFront.rotation.x -= THREE.Math.degToRad(1);
-        });
         shutters.add(options, 'toggleLouvreRotation').name('Toggle Rotation').onChange(function () {
             rotateLouvres.reverse();
             rotateLouvres.play();
-            toggleLouvreStrings.reverse();
-            toggleLouvreStrings.play();
+            tasselAnimations['rotationCordUp'].reverse();
+            tasselAnimations['rotationCordUp'].play();
+            tasselAnimations['rotationCordDown'].reverse();
+            tasselAnimations['rotationCordDown'].play();
         });
         shutters.add(options, 'toggleLouvrePosition').name('Toggle Louvres').onChange(function () {
             positionLouvres.reverse();
             positionLouvres.play();
-            scaleStrings.reverse();
-            scaleStrings.play();
+            tasselAnimations['pullCordUp'].reverse();
+            tasselAnimations['pullCordUp'].play();
         });
         shutters.open();
     }
@@ -193,7 +156,7 @@ import anime from 'animejs/lib/anime.es.js';
                 value: THREE.Math.degToRad(160),
                 duration: 500
             }],
-            easing: 'easeInCubic',
+            easing: 'easeInOutSine',
             autoplay: false
         });
         rotateLouvres.reverse();
@@ -201,42 +164,33 @@ import anime from 'animejs/lib/anime.es.js';
         positionLouvres = anime({
             targets: louvreArrayPosition,
             y: [{
-                value: (elm, index, t) => louvreArrayPositionNew[index],
-                duration: 1000
-            }],
-            easing: 'easeInOutSine',
-            autoplay: false
-        });
-        positionLouvres.reverse();
-
-        scaleStrings = anime({
-            targets: stringArray,
-            y: [{
-                value: 2 * (louvreSizeZ * louvreArrayPositionNew.length),
-                duration: 1000
-            }],
-            easing: 'easeInOutSine',
-            autoplay: false
-        });
-        scaleStrings.reverse();
-
-        toggleLouvreStrings = anime({
-            targets: toggleStrings,
-            y: [{
-                value: (elm, index, t) => index === 0 ? elm.y / 2 : elm.y * 1.25,
-                duration: 500
+                value: (el, i, l) => louvreArrayPositionNew[i],
+                duration: 700
             }],
             easing: 'easeInOutSine',
             autoplay: false,
             update: function (anim) {
-                // tassle.scale.y = 1 / louvreToggle1.scale.y;
-                // tassle.position.y = -(louvreToggle1.scale.y * tassle.scale.y);
-                // console.log(louvreToggle1.scale.y);
-                // console.log(louvreToggle1.scale.y, tassle.scale.y);
-                // tassle.position.y = louvreToggle1.scale.y * tassle.scale.y;
+                for (var i = 0; i < stringArray.length; i++) {
+                    stringArray[i].y = louvreSizeY * louvreCount;
+                }
             }
         });
-        toggleLouvreStrings.reverse();
+        positionLouvres.reverse();
+
+        tasselsToAnimate.forEach(function (tasselToAnimate, index) {
+            var animation = anime({
+                targets: tasselToAnimate.tassel.position,
+                y: tasselToAnimate.endPosition,
+                duration: 700,
+                easing: 'easeInOutSine',
+                autoplay: false,
+                update: function (anim) {
+                    tasselToAnimate.rope.scale.y = tasselToAnimate.tassel.position.y * -1;
+                }
+            });
+            animation.reverse();
+            tasselAnimations[tasselToAnimate.animationName] = animation;
+        });
     }
 
     function createBlind() {
@@ -274,7 +228,8 @@ import anime from 'animejs/lib/anime.es.js';
         var louvreString = new THREE.Mesh(
             new THREE.CylinderGeometry(0.3, 0.3, 1),
             new THREE.MeshLambertMaterial({
-                color: stringColor
+                color: stringColor,
+                wireframe: true
             })
         );
         louvreString.scale.setY(louvreAreaBox.getSize(vector).y);
@@ -297,44 +252,20 @@ import anime from 'animejs/lib/anime.es.js';
             z: -(doorSizeZ / 8)
         }];
         stringArray = [];
-        for (var stringInteger = 0; stringInteger + 1 <= stringPositions.length; stringInteger++) {
+        for (var stringInteger = 0; stringInteger < stringPositions.length; stringInteger++) {
             var newString = louvreString.clone();
-            newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y, stringPositions[stringInteger].z);
+            newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y - blindTopperBox.getSize(vector).y / 2, stringPositions[stringInteger].z);
             stringArray.push(newString.scale);
             blindTopper.add(newString);
         }
 
-        var pullCordString = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.5, 0.5, 1),
-            new THREE.MeshLambertMaterial({
-                color: stringColor
-            })
-        );
-        pullCordString.geometry.translate(0, -0.5, 0);
-        tassle = new THREE.Mesh(
-            new THREE.CylinderGeometry(2, 3, 10),
-            new THREE.MeshLambertMaterial({
-                color: doorColor
-            })
-        );
-
-        louvreToggle1 = pullCordString.clone();
-        louvreToggle1.scale.setY(louvreAreaBox.getSize(vector).y / 3);
-        louvreToggle1.position.x = ((blindBox.getSize(vector).x / 2) - 30) * -1;
-        louvreToggle1.position.z = (doorSizeZ / 2) - 2;
-        tassle.scale.y = 1 / louvreToggle1.scale.y;
-        tassle.geometry.translate(0, -louvreToggle1.scale.y, 0);
-        louvreToggle1.add(tassle);
-        var louvreToggle2 = louvreToggle1.clone();
-        louvreToggle2.position.x = ((blindBox.getSize(vector).x / 2) - 40) * -1;
-
-        blindTopper.add(louvreToggle1);
-        // blindTopper.add(louvreToggle2);
-        toggleStrings = [];
-        toggleStrings.push(louvreToggle1.scale);
-        toggleStrings.push(louvreToggle2.scale);
+        createTassels(blindTopper);
 
         singleBlind.add(blindTopper);
+        var box = new THREE.BoxHelper(singleBlind, 0xffff00);
+        box.scale.set(1.5, 1.5, 1.5);
+        scene.add(box);
+
         createLouvres(singleBlind, louvreArea);
         scene.add(singleBlind);
 
@@ -342,10 +273,64 @@ import anime from 'animejs/lib/anime.es.js';
         camera.position.z = (Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360)) + 200;
     }
 
+    function createTassels(target) {
+        var tassel = new THREE.Mesh(
+            new THREE.CylinderGeometry(2, 3, 10),
+            new THREE.MeshLambertMaterial({
+                color: doorColor
+            })
+        );
+        var rope = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1), new THREE.MeshBasicMaterial({
+            color: 'white'
+        }));
+        rope.geometry.translate(0, 0.5, 0);
+
+        var tasselPositions = [{
+                x: -100,
+                y: -100,
+                z: doorSizeZ / 2 - 3,
+                animateTo: -50,
+                animationName: 'rotationCordUp'
+            }, {
+                x: -70,
+                y: -100,
+                z: doorSizeZ / 2 - 3,
+                animateTo: -150,
+                animationName: 'rotationCordDown'
+            },
+            {
+                x: 100,
+                y: -50,
+                z: doorSizeZ / 2 - 3,
+                animateTo: -150,
+                animationName: 'pullCordUp'
+            }
+        ];
+        for (var i = 0; i < tasselPositions.length; i++) {
+            var current = tasselPositions[i],
+                newTassel = tassel.clone(),
+                newRope = rope.clone();
+
+            newTassel.position.set(current.x, current.y, current.z);
+            newRope.scale.y = current.y * -1;
+
+            ropes.push(newRope);
+            newTassel.add(newRope);
+            target.add(newTassel);
+
+            tasselsToAnimate.push({
+                tassel: newTassel,
+                rope: newRope,
+                endPosition: current.animateTo,
+                animationName: current.animationName
+            });
+        }
+    }
+
     function createLouvres(parent, target) {
         var targetBox = new THREE.Box3().setFromObject(target); // Get the bounding box of the target
         var louvreAreaHeight = targetBox.getSize(vector).y;
-        var louvreCount = Math.floor(louvreAreaHeight / louvreSizeY); // Count how many louvres fit into the box
+        louvreCount = Math.floor(louvreAreaHeight / louvreSizeY); // Count how many louvres fit into the box
 
         var texture = new THREE.TextureLoader().load('/images/wood.jpg');
         texture.wrapS = THREE.RepeatWrapping;

@@ -65386,11 +65386,17 @@ __webpack_require__.r(__webpack_exports__);
 (function () {
   'use strict'; // Reusable vars
 
-  var scene, camera, renderer, controls, stats, hemiLight, spotLightFront, tassle, louvreToggle1;
+  var scene, camera, renderer, controls, stats, hemiLight, louvreCount;
   var vector = new three__WEBPACK_IMPORTED_MODULE_1__["Vector3"](); // Animations
 
-  var louvreArrayRotation, louvreArrayPosition, louvreArrayPositionNew, stringArray, toggleStrings;
-  var rotateLouvres, positionLouvres, scaleStrings, toggleLouvreStrings; // Enviroment
+  var louvreArrayRotation,
+      louvreArrayPosition,
+      louvreArrayPositionNew,
+      stringArray,
+      tasselsToAnimate = [],
+      ropes = [],
+      tasselAnimations = {};
+  var rotateLouvres, positionLouvres, animateTassels; // Enviroment
 
   var louvreSizeY = 13,
       louvreSizeZ = 1,
@@ -65399,21 +65405,18 @@ __webpack_require__.r(__webpack_exports__);
       louvreColour = 0x9ebdc6,
       doorSizeX = 300,
       doorSizeY = 300,
-      doorSizeZ = 20;
+      doorSizeZ = 24;
   var options = {
     color: 0x9ebdc6,
     toggleLouvreRotation: false,
-    toggleLouvrePosition: false,
-    cameraHeight: 100
+    toggleLouvrePosition: false
   };
   init();
   animate();
 
   function init() {
     // Scene
-    scene = new three__WEBPACK_IMPORTED_MODULE_1__["Scene"](); // Floor
-
-    createFloor(); // Lights
+    scene = new three__WEBPACK_IMPORTED_MODULE_1__["Scene"](); // Lights
 
     createLights(); // Camera
 
@@ -65441,43 +65444,30 @@ __webpack_require__.r(__webpack_exports__);
     document.body.appendChild(stats.dom); // Axis
     // var axesHelper = new THREE.AxesHelper(200);
     // scene.add(axesHelper);
+    // Floor
+    // createFloor();
     // Create a blind
 
-    createBlind(); // Create tweens
+    createBlind(); // Create animations
 
     createAnimations(); // Gui
 
     createGui();
-    var cube = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["BoxGeometry"](doorSizeX, doorSizeY, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      color: doorColor
-    }));
-    cube.position.z = 50;
-    scene.traverse(function (mesh) {
-      if (mesh.type === 'Mesh') {
-        mesh.castShadow = true;
-        mesh.recieveShadow = true;
-      }
-    });
   }
 
   function createFloor() {
-    var geometry = new three__WEBPACK_IMPORTED_MODULE_1__["PlaneGeometry"](1000, 1000, 1, 1);
     var texture = new three__WEBPACK_IMPORTED_MODULE_1__["TextureLoader"]().load('/images/grass.jpg');
     texture.wrapS = three__WEBPACK_IMPORTED_MODULE_1__["RepeatWrapping"];
     texture.wrapT = three__WEBPACK_IMPORTED_MODULE_1__["RepeatWrapping"];
     texture.repeat.set(6, 6);
-    var material = new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      map: texture
-    });
-    var floor_geometry = new three__WEBPACK_IMPORTED_MODULE_1__["PlaneGeometry"](1000, 1000);
-    var floor_material = new three__WEBPACK_IMPORTED_MODULE_1__["MeshPhongMaterial"]({
+    var floor = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["PlaneGeometry"](1000, 1000), new three__WEBPACK_IMPORTED_MODULE_1__["MeshPhongMaterial"]({
       color: 0xffffff
-    });
-    var floor = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](floor_geometry, floor_material);
+    }));
     floor.position.set(0, -doorSizeY / 2 / 2, 0);
     floor.rotation.x -= Math.PI / 2;
     floor.receiveShadow = true;
-    floor.castShadow = false; // scene.add(floor);
+    floor.castShadow = false;
+    scene.add(floor);
   }
 
   function createLights() {
@@ -65485,17 +65475,6 @@ __webpack_require__.r(__webpack_exports__);
     hemiLight.position.set(-300, 300, 200);
     scene.add(hemiLight); // var hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
     // scene.add(hemiLightHelper);
-    // spotlights
-
-    spotLightFront = new three__WEBPACK_IMPORTED_MODULE_1__["SpotLight"](0xffffff);
-    spotLightFront.position.set(0, 400, 400); // scene.add(spotLightFront);
-    // spotLightFront.castShadow = true;
-    // spotLightFront.shadowCameraVisible = true;
-    // spotLightFront.shadow.camera.near = 1;
-    // spotLightFront.shadow.camera.far = 1000;
-    // spotLightFront.shadow.radius = 1;
-    // var spotLightHelper = new THREE.SpotLightHelper(spotLightFront, 10);
-    // scene.add(spotLightHelper);
   }
 
   function createGui() {
@@ -65508,21 +65487,19 @@ __webpack_require__.r(__webpack_exports__);
         }
       });
     });
-    shutters.add(options, 'cameraHeight').name('Camera height').onChange(function () {
-      spotLightFront.position.y = options.cameraHeight;
-      spotLightFront.rotation.x -= three__WEBPACK_IMPORTED_MODULE_1__["Math"].degToRad(1);
-    });
     shutters.add(options, 'toggleLouvreRotation').name('Toggle Rotation').onChange(function () {
       rotateLouvres.reverse();
       rotateLouvres.play();
-      toggleLouvreStrings.reverse();
-      toggleLouvreStrings.play();
+      tasselAnimations['rotationCordUp'].reverse();
+      tasselAnimations['rotationCordUp'].play();
+      tasselAnimations['rotationCordDown'].reverse();
+      tasselAnimations['rotationCordDown'].play();
     });
     shutters.add(options, 'toggleLouvrePosition').name('Toggle Louvres').onChange(function () {
       positionLouvres.reverse();
       positionLouvres.play();
-      scaleStrings.reverse();
-      scaleStrings.play();
+      tasselAnimations['pullCordUp'].reverse();
+      tasselAnimations['pullCordUp'].play();
     });
     shutters.open();
   }
@@ -65534,50 +65511,41 @@ __webpack_require__.r(__webpack_exports__);
         value: three__WEBPACK_IMPORTED_MODULE_1__["Math"].degToRad(160),
         duration: 500
       }],
-      easing: 'easeInCubic',
+      easing: 'easeInOutSine',
       autoplay: false
     });
     rotateLouvres.reverse();
     positionLouvres = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
       targets: louvreArrayPosition,
       y: [{
-        value: function value(elm, index, t) {
-          return louvreArrayPositionNew[index];
+        value: function value(el, i, l) {
+          return louvreArrayPositionNew[i];
         },
-        duration: 1000
-      }],
-      easing: 'easeInOutSine',
-      autoplay: false
-    });
-    positionLouvres.reverse();
-    scaleStrings = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
-      targets: stringArray,
-      y: [{
-        value: 2 * (louvreSizeZ * louvreArrayPositionNew.length),
-        duration: 1000
-      }],
-      easing: 'easeInOutSine',
-      autoplay: false
-    });
-    scaleStrings.reverse();
-    toggleLouvreStrings = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
-      targets: toggleStrings,
-      y: [{
-        value: function value(elm, index, t) {
-          return index === 0 ? elm.y / 2 : elm.y * 1.25;
-        },
-        duration: 500
+        duration: 700
       }],
       easing: 'easeInOutSine',
       autoplay: false,
-      update: function update(anim) {// tassle.scale.y = 1 / louvreToggle1.scale.y;
-        // tassle.position.y = -(louvreToggle1.scale.y * tassle.scale.y);
-        // console.log(louvreToggle1.scale.y);
-        // console.log(louvreToggle1.scale.y, tassle.scale.y);
-        // tassle.position.y = louvreToggle1.scale.y * tassle.scale.y;
+      update: function update(anim) {
+        for (var i = 0; i < stringArray.length; i++) {
+          stringArray[i].y = louvreSizeY * louvreCount;
+        }
       }
     });
-    toggleLouvreStrings.reverse();
+    positionLouvres.reverse();
+    tasselsToAnimate.forEach(function (tasselToAnimate, index) {
+      var animation = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
+        targets: tasselToAnimate.tassel.position,
+        y: tasselToAnimate.endPosition,
+        duration: 700,
+        easing: 'easeInOutSine',
+        autoplay: false,
+        update: function update(anim) {
+          tasselToAnimate.rope.scale.y = tasselToAnimate.tassel.position.y * -1;
+        }
+      });
+      animation.reverse();
+      tasselAnimations[tasselToAnimate.animationName] = animation;
+    });
   }
 
   function createBlind() {
@@ -65600,7 +65568,8 @@ __webpack_require__.r(__webpack_exports__);
         louvreAreaBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(louvreArea);
     louvreArea.position.y = -blindTopperBox.getSize(vector).y / 2;
     var louvreString = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["CylinderGeometry"](0.3, 0.3, 1), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      color: stringColor
+      color: stringColor,
+      wireframe: true
     }));
     louvreString.scale.setY(louvreAreaBox.getSize(vector).y);
     louvreString.geometry.translate(0, -0.5, 0);
@@ -65623,46 +65592,75 @@ __webpack_require__.r(__webpack_exports__);
     }];
     stringArray = [];
 
-    for (var stringInteger = 0; stringInteger + 1 <= stringPositions.length; stringInteger++) {
+    for (var stringInteger = 0; stringInteger < stringPositions.length; stringInteger++) {
       var newString = louvreString.clone();
-      newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y, stringPositions[stringInteger].z);
+      newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y - blindTopperBox.getSize(vector).y / 2, stringPositions[stringInteger].z);
       stringArray.push(newString.scale);
       blindTopper.add(newString);
     }
 
-    var pullCordString = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["CylinderGeometry"](0.5, 0.5, 1), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      color: stringColor
-    }));
-    pullCordString.geometry.translate(0, -0.5, 0);
-    tassle = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["CylinderGeometry"](2, 3, 10), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      color: doorColor
-    }));
-    louvreToggle1 = pullCordString.clone();
-    louvreToggle1.scale.setY(louvreAreaBox.getSize(vector).y / 3);
-    louvreToggle1.position.x = (blindBox.getSize(vector).x / 2 - 30) * -1;
-    louvreToggle1.position.z = doorSizeZ / 2 - 2;
-    tassle.scale.y = 1 / louvreToggle1.scale.y;
-    tassle.geometry.translate(0, -louvreToggle1.scale.y, 0);
-    louvreToggle1.add(tassle);
-    var louvreToggle2 = louvreToggle1.clone();
-    louvreToggle2.position.x = (blindBox.getSize(vector).x / 2 - 40) * -1;
-    blindTopper.add(louvreToggle1); // blindTopper.add(louvreToggle2);
-
-    toggleStrings = [];
-    toggleStrings.push(louvreToggle1.scale);
-    toggleStrings.push(louvreToggle2.scale);
+    createTassels(blindTopper);
     singleBlind.add(blindTopper);
+    var box = new three__WEBPACK_IMPORTED_MODULE_1__["BoxHelper"](singleBlind, 0xffff00);
+    box.scale.set(1.5, 1.5, 1.5);
+    scene.add(box);
     createLouvres(singleBlind, louvreArea);
     scene.add(singleBlind); // Make sure the camera shows all
 
     camera.position.z = Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360) + 200;
   }
 
+  function createTassels(target) {
+    var tassel = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["CylinderGeometry"](2, 3, 10), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
+      color: doorColor
+    }));
+    var rope = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["CylinderGeometry"](0.5, 0.5, 1), new three__WEBPACK_IMPORTED_MODULE_1__["MeshBasicMaterial"]({
+      color: 'white'
+    }));
+    rope.geometry.translate(0, 0.5, 0);
+    var tasselPositions = [{
+      x: -100,
+      y: -100,
+      z: doorSizeZ / 2 - 3,
+      animateTo: -50,
+      animationName: 'rotationCordUp'
+    }, {
+      x: -70,
+      y: -100,
+      z: doorSizeZ / 2 - 3,
+      animateTo: -150,
+      animationName: 'rotationCordDown'
+    }, {
+      x: 100,
+      y: -50,
+      z: doorSizeZ / 2 - 3,
+      animateTo: -150,
+      animationName: 'pullCordUp'
+    }];
+
+    for (var i = 0; i < tasselPositions.length; i++) {
+      var current = tasselPositions[i],
+          newTassel = tassel.clone(),
+          newRope = rope.clone();
+      newTassel.position.set(current.x, current.y, current.z);
+      newRope.scale.y = current.y * -1;
+      ropes.push(newRope);
+      newTassel.add(newRope);
+      target.add(newTassel);
+      tasselsToAnimate.push({
+        tassel: newTassel,
+        rope: newRope,
+        endPosition: current.animateTo,
+        animationName: current.animationName
+      });
+    }
+  }
+
   function createLouvres(parent, target) {
     var targetBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(target); // Get the bounding box of the target
 
     var louvreAreaHeight = targetBox.getSize(vector).y;
-    var louvreCount = Math.floor(louvreAreaHeight / louvreSizeY); // Count how many louvres fit into the box
+    louvreCount = Math.floor(louvreAreaHeight / louvreSizeY); // Count how many louvres fit into the box
 
     var texture = new three__WEBPACK_IMPORTED_MODULE_1__["TextureLoader"]().load('/images/wood.jpg');
     texture.wrapS = three__WEBPACK_IMPORTED_MODULE_1__["RepeatWrapping"];
