@@ -7,6 +7,7 @@
     <title>{{ config('app.name', 'threejs') }}</title>
     <link href="{{ mix('css/app.css') }}" rel="stylesheet" />
     <link rel="icon" type="image/png" href="{{ asset('images/ico.png') }}" />
+    <script src="{{ mix('js/threejs.js') }}" defer></script>
 </head>
 <body>
     <div id="app">
@@ -20,10 +21,8 @@
         </main>
     </div>
     @auth
-        <script src="{{ mix('js/ammo.js') }}"></script>
         <script src="{{ mix('js/manifest.js') }}" defer></script>
         <script src="{{ mix('js/vendor.js') }}" defer></script>
-        <script src="{{ mix('js/threejs.js') }}" defer></script>
         <script src="{{ mix('js/app.js') }}" defer></script>
     @endauth
 </body>

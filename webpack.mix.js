@@ -12,6 +12,19 @@ const mix = require('laravel-mix');
  */
 
 mix.webpackConfig({
+        module: {
+            rules: [{
+                test: /\.jsx?$/,
+                exclude: /('')/,
+                use: [{
+                    loader: 'babel-loader',
+                    options: {
+                        presets: ['@babel/preset-env'], // npm install --save-dev @babel/preset-env
+                        // plugins: ['@babel/plugin-transform-arrow-functions']
+                    }
+                }]
+            }]
+        },
         node: {
             fs: 'empty'
         }

@@ -3,25 +3,25 @@
 /* eslint space-before-function-paren: 0 */
 /* global requestAnimationFrame */
 
-import jQuery from 'jquery';
 import * as THREE from 'three';
+import jQuery from 'jquery';
 import Stats from 'stats.js';
 import OrbitControls from 'three-orbitcontrols';
 import Dat from 'dat.gui';
 import anime from 'animejs/lib/anime.es.js';
-// import * as Ammo from 'ammo.js';
 
 (function () {
     'use strict';
 
     // Reusable vars
-    var scene, camera, renderer, controls, stats, hemiLight, louvreCount;
+    var scene, camera, renderer, controls, stats, hemisphereLight, louvreCount;
     var vector = new THREE.Vector3();
+    var stage = document.getElementById('threejs-stage');
 
     // Animations
-    var louvreArrayRotation = [],
-        louvreArrayPosition = [],
-        louvreArrayPositionNew = [],
+    var louvresToRotate = [],
+        louvresToPosition = [],
+        louvresToPositionNewValues = [],
         stringArray = [],
         tasselsToAnimate = [],
         ropes = [],
@@ -35,8 +35,8 @@ import anime from 'animejs/lib/anime.es.js';
         stringColor = 0xffffff,
         doorColor = 0xFEF2DD,
         louvreColour = 0x9ebdc6,
-        doorSizeX = 300,
-        doorSizeY = 300,
+        doorSizeX = document.getElementById('width').value,
+        doorSizeY = document.getElementById('height').value,
         doorSizeZ = 24;
 
     var options = {
@@ -48,6 +48,9 @@ import anime from 'animejs/lib/anime.es.js';
     init();
     animate();
 
+    /**
+     *  Initiate the scene
+     **/
     function init() {
         // Scene
         scene = new THREE.Scene();
@@ -56,8 +59,7 @@ import anime from 'animejs/lib/anime.es.js';
         createLights();
 
         // Camera
-        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 9999);
-        camera.position.z = 2000;
+        createCameras();
 
         // Renderer
         renderer = new THREE.WebGLRenderer({
@@ -67,8 +69,8 @@ import anime from 'animejs/lib/anime.es.js';
             shadowMapType: THREE.PCFSoftShadowMap
         });
         renderer.shadowMap.enabled = true;
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+        renderer.setSize(stage.offsetWidth, stage.offsetHeight);
+        stage.appendChild(renderer.domElement);
 
         // Controls
         controls = new OrbitControls(camera, renderer.domElement);
@@ -79,7 +81,7 @@ import anime from 'animejs/lib/anime.es.js';
         // Stats
         stats = new Stats();
         stats.showPanel(0); // 0: fps, 1: ms, 2: mb, 3+: custom
-        document.body.appendChild(stats.dom);
+        // stage.appendChild(stats.dom);
 
         // Axis
         // var axesHelper = new THREE.AxesHelper(200);
@@ -88,16 +90,42 @@ import anime from 'animejs/lib/anime.es.js';
         // Floor
         // createFloor();
 
-        // Create a blind
+        // Create blind
         createBlind();
 
         // Create animations
         createAnimations();
 
-        // Gui
+        // Create gui
         createGui();
+
+        window.addEventListener('load', onWindowResize, false);
+        window.addEventListener('resize', onWindowResize, false);
     }
 
+    /**
+     *  Create the lights for the scene
+     **/
+    function createLights() {
+        hemisphereLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1);
+        hemisphereLight.position.set(-300, 300, 200);
+        scene.add(hemisphereLight);
+
+        // var hemisphereLightHelper = new THREE.HemisphereLightHelper(hemisphereLight, 10);
+        // scene.add(hemisphereLightHelper);
+    }
+
+    /**
+     *  Create the cameras for the scene
+     **/
+    function createCameras() {
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 9999);
+        camera.position.z = 2000;
+    }
+
+    /**
+     *  Create a floor
+     **/
     function createFloor() {
         var texture = new THREE.TextureLoader().load('/images/grass.jpg');
         texture.wrapS = THREE.RepeatWrapping;
@@ -118,15 +146,9 @@ import anime from 'animejs/lib/anime.es.js';
         scene.add(floor);
     }
 
-    function createLights() {
-        hemiLight = new THREE.HemisphereLight(0xffffff, 0xaaaaaa, 1);
-        hemiLight.position.set(-300, 300, 200);
-        scene.add(hemiLight);
-
-        // var hemiLightHelper = new THREE.HemisphereLightHelper(hemiLight, 10);
-        // scene.add(hemiLightHelper);
-    }
-
+    /**
+     *  Create GUI elements
+     **/
     function createGui() {
         var gui = new Dat.GUI();
         var shutters = gui.addFolder('Shutters');
@@ -156,9 +178,12 @@ import anime from 'animejs/lib/anime.es.js';
         shutters.open();
     }
 
+    /**
+     *  Create the animations
+     **/
     function createAnimations() {
         rotateLouvres = anime({
-            targets: louvreArrayRotation,
+            targets: louvresToRotate,
             x: THREE.Math.degToRad(160),
             duration: 500,
             easing: 'easeInOutSine',
@@ -167,8 +192,8 @@ import anime from 'animejs/lib/anime.es.js';
         rotateLouvres.reverse();
 
         positionLouvres = anime({
-            targets: louvreArrayPosition,
-            y: (el, i, l) => louvreArrayPositionNew[i],
+            targets: louvresToPosition,
+            y: (el, i, l) => louvresToPositionNewValues[i],
             duration: 700,
             easing: 'easeInOutSine',
             autoplay: false
@@ -200,6 +225,9 @@ import anime from 'animejs/lib/anime.es.js';
         });
     }
 
+    /**
+     *  Create a blind
+     **/
     function createBlind() {
         var singleBlind = new THREE.Group();
 
@@ -222,14 +250,13 @@ import anime from 'animejs/lib/anime.es.js';
         blindTopper.position.y = doorSizeY / 2 - (blindTopperBox.getSize(vector).y / 2);
 
         var louvreArea = new THREE.Mesh(
-                new THREE.BoxGeometry(doorSizeX, doorSizeY - blindTopperBox.getSize(vector).y, doorSizeZ),
-                new THREE.MeshLambertMaterial({
-                    color: 0x00ff00,
-                    transparent: true,
-                    opacity: 0
-                })
-            ),
-            louvreAreaBox = new THREE.Box3().setFromObject(louvreArea);
+            new THREE.BoxGeometry(doorSizeX, doorSizeY - blindTopperBox.getSize(vector).y, doorSizeZ),
+            new THREE.MeshLambertMaterial({
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0
+            })
+        );
         louvreArea.position.y = -blindTopperBox.getSize(vector).y / 2;
 
         createTassels(blindTopper);
@@ -242,6 +269,7 @@ import anime from 'animejs/lib/anime.es.js';
         // scene.add(box);
 
         createLouvres(singleBlind, louvreArea);
+        singleBlind.add(louvreArea);
 
         var louvreString = new THREE.Mesh(
             new THREE.CylinderGeometry(0.3, 0.3, 1),
@@ -282,6 +310,9 @@ import anime from 'animejs/lib/anime.es.js';
         camera.position.z = (Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360)) + 200;
     }
 
+    /**
+     *  Create Tassel elements and respective cords
+     **/
     function createTassels(target) {
         var tassel = new THREE.Mesh(
             new THREE.CylinderGeometry(2, 3, 10),
@@ -336,39 +367,49 @@ import anime from 'animejs/lib/anime.es.js';
         }
     }
 
+    /**
+     *  Create the louvres
+     * @param {String} the parent
+     **/
     function createLouvres(parent, target) {
         var targetBox = new THREE.Box3().setFromObject(target); // Get the bounding box of the target
         var louvreAreaHeight = targetBox.getSize(vector).y;
         louvreCount = Math.floor(louvreAreaHeight / louvreSizeY); // Count how many louvres fit into the box
 
-        var texture = new THREE.TextureLoader().load('/images/wood.jpg');
-        texture.wrapS = THREE.RepeatWrapping;
         var louvre = new THREE.Mesh(
             new THREE.BoxGeometry(targetBox.getSize(vector).x, louvreSizeY, louvreSizeZ),
             new THREE.MeshLambertMaterial({
                 color: louvreColour
             })
         );
-        louvre.castShadow = true;
-        louvre.receiveShadow = true;
-
         louvre.name = 'louvre';
         louvre.rotation.x = THREE.Math.degToRad(90);
 
         for (var louvreIndex = 0; louvreIndex < louvreCount;) {
             var newLouvre = louvre.clone();
-            newLouvre.position.y = ((louvreAreaHeight / 2 - louvreSizeY / 2) + target.position.y) - (louvreSizeY * louvreIndex);
-            louvreArrayPositionNew.push(((louvreAreaHeight / 2 - louvreSizeZ / 2) + target.position.y) - (louvreSizeZ * louvreIndex));
-            louvreArrayRotation.push(newLouvre.rotation);
-            louvreArrayPosition.push(newLouvre.position);
-            parent.add(newLouvre);
+            newLouvre.position.y = ((louvreAreaHeight / 2) - (louvreSizeY / 2)) - louvreSizeY * louvreIndex;
+            louvresToRotate.push(newLouvre.rotation);
+            louvresToPosition.push(newLouvre.position);
+            louvresToPositionNewValues.push(((louvreAreaHeight / 2) - (louvreSizeZ / 2)) - louvreSizeZ * louvreIndex);
+
+            target.add(newLouvre);
             louvreIndex++;
         }
+    }
+
+    function onWindowResize() {
+        camera.aspect = stage.offsetWidth / stage.offsetHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(stage.offsetWidth, stage.offsetHeight);
     }
 
     function animate() {
         // Render the scene
         renderer.render(scene, camera);
+
+        const canvas = renderer.domElement;
+        camera.aspect = canvas.clientWidth / canvas.clientHeight;
+        camera.updateProjectionMatrix();
 
         // Restart the loop
         requestAnimationFrame(animate);
