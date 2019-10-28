@@ -19,10 +19,15 @@ import anime from 'animejs/lib/anime.es.js';
     var vector = new THREE.Vector3();
 
     // Animations
-    var louvreArrayRotation, louvreArrayPosition, louvreArrayPositionNew, stringArray, tasselsToAnimate = [],
+    var louvreArrayRotation = [],
+        louvreArrayPosition = [],
+        louvreArrayPositionNew = [],
+        stringArray = [],
+        tasselsToAnimate = [],
         ropes = [],
         tasselAnimations = {};
-    var rotateLouvres, positionLouvres, animateTassels;
+
+    var rotateLouvres, positionLouvres, scaleStrings;
 
     // Enviroment
     var louvreSizeY = 13,
@@ -145,6 +150,8 @@ import anime from 'animejs/lib/anime.es.js';
             positionLouvres.play();
             tasselAnimations['pullCordUp'].reverse();
             tasselAnimations['pullCordUp'].play();
+            scaleStrings.reverse();
+            scaleStrings.play();
         });
         shutters.open();
     }
@@ -152,10 +159,8 @@ import anime from 'animejs/lib/anime.es.js';
     function createAnimations() {
         rotateLouvres = anime({
             targets: louvreArrayRotation,
-            x: [{
-                value: THREE.Math.degToRad(160),
-                duration: 500
-            }],
+            x: THREE.Math.degToRad(160),
+            duration: 500,
             easing: 'easeInOutSine',
             autoplay: false
         });
@@ -163,19 +168,21 @@ import anime from 'animejs/lib/anime.es.js';
 
         positionLouvres = anime({
             targets: louvreArrayPosition,
-            y: [{
-                value: (el, i, l) => louvreArrayPositionNew[i],
-                duration: 700
-            }],
+            y: (el, i, l) => louvreArrayPositionNew[i],
+            duration: 700,
             easing: 'easeInOutSine',
-            autoplay: false,
-            update: function (anim) {
-                for (var i = 0; i < stringArray.length; i++) {
-                    stringArray[i].y = louvreSizeY * louvreCount;
-                }
-            }
+            autoplay: false
         });
         positionLouvres.reverse();
+
+        scaleStrings = anime({
+            targets: stringArray,
+            y: (louvreSizeZ) * louvreCount,
+            duration: 700,
+            easing: 'easeInOutSine',
+            autoplay: false
+        });
+        scaleStrings.reverse();
 
         tasselsToAnimate.forEach(function (tasselToAnimate, index) {
             var animation = anime({
@@ -225,14 +232,24 @@ import anime from 'animejs/lib/anime.es.js';
             louvreAreaBox = new THREE.Box3().setFromObject(louvreArea);
         louvreArea.position.y = -blindTopperBox.getSize(vector).y / 2;
 
+        createTassels(blindTopper);
+
+        singleBlind.add(blindTopper);
+        //
+        // var box = new THREE.BoxHelper(singleBlind, 0xffff00);
+        // box.scale.set(1.5, 1.5, 1.5);
+        // console.log(box);
+        // scene.add(box);
+
+        createLouvres(singleBlind, louvreArea);
+
         var louvreString = new THREE.Mesh(
             new THREE.CylinderGeometry(0.3, 0.3, 1),
             new THREE.MeshLambertMaterial({
-                color: stringColor,
-                wireframe: true
+                color: stringColor
             })
         );
-        louvreString.scale.setY(louvreAreaBox.getSize(vector).y);
+        louvreString.scale.setY((louvreSizeY * louvreCount) - louvreSizeY / 2);
         louvreString.geometry.translate(0, -0.5, 0);
         var stringPositions = [{
             x: -75,
@@ -259,14 +276,6 @@ import anime from 'animejs/lib/anime.es.js';
             blindTopper.add(newString);
         }
 
-        createTassels(blindTopper);
-
-        singleBlind.add(blindTopper);
-        var box = new THREE.BoxHelper(singleBlind, 0xffff00);
-        box.scale.set(1.5, 1.5, 1.5);
-        scene.add(box);
-
-        createLouvres(singleBlind, louvreArea);
         scene.add(singleBlind);
 
         // Make sure the camera shows all
@@ -346,9 +355,6 @@ import anime from 'animejs/lib/anime.es.js';
         louvre.name = 'louvre';
         louvre.rotation.x = THREE.Math.degToRad(90);
 
-        louvreArrayRotation = []; // Collect the louvres for rotating later
-        louvreArrayPosition = []; // Collect the louvres for positioning later
-        louvreArrayPositionNew = []; // Collect the new position values
         for (var louvreIndex = 0; louvreIndex < louvreCount;) {
             var newLouvre = louvre.clone();
             newLouvre.position.y = ((louvreAreaHeight / 2 - louvreSizeY / 2) + target.position.y) - (louvreSizeY * louvreIndex);

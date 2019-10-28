@@ -65389,14 +65389,14 @@ __webpack_require__.r(__webpack_exports__);
   var scene, camera, renderer, controls, stats, hemiLight, louvreCount;
   var vector = new three__WEBPACK_IMPORTED_MODULE_1__["Vector3"](); // Animations
 
-  var louvreArrayRotation,
-      louvreArrayPosition,
-      louvreArrayPositionNew,
-      stringArray,
+  var louvreArrayRotation = [],
+      louvreArrayPosition = [],
+      louvreArrayPositionNew = [],
+      stringArray = [],
       tasselsToAnimate = [],
       ropes = [],
       tasselAnimations = {};
-  var rotateLouvres, positionLouvres, animateTassels; // Enviroment
+  var rotateLouvres, positionLouvres, scaleStrings; // Enviroment
 
   var louvreSizeY = 13,
       louvreSizeZ = 1,
@@ -65500,6 +65500,8 @@ __webpack_require__.r(__webpack_exports__);
       positionLouvres.play();
       tasselAnimations['pullCordUp'].reverse();
       tasselAnimations['pullCordUp'].play();
+      scaleStrings.reverse();
+      scaleStrings.play();
     });
     shutters.open();
   }
@@ -65507,31 +65509,30 @@ __webpack_require__.r(__webpack_exports__);
   function createAnimations() {
     rotateLouvres = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
       targets: louvreArrayRotation,
-      x: [{
-        value: three__WEBPACK_IMPORTED_MODULE_1__["Math"].degToRad(160),
-        duration: 500
-      }],
+      x: three__WEBPACK_IMPORTED_MODULE_1__["Math"].degToRad(160),
+      duration: 500,
       easing: 'easeInOutSine',
       autoplay: false
     });
     rotateLouvres.reverse();
     positionLouvres = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
       targets: louvreArrayPosition,
-      y: [{
-        value: function value(el, i, l) {
-          return louvreArrayPositionNew[i];
-        },
-        duration: 700
-      }],
+      y: function y(el, i, l) {
+        return louvreArrayPositionNew[i];
+      },
+      duration: 700,
       easing: 'easeInOutSine',
-      autoplay: false,
-      update: function update(anim) {
-        for (var i = 0; i < stringArray.length; i++) {
-          stringArray[i].y = louvreSizeY * louvreCount;
-        }
-      }
+      autoplay: false
     });
     positionLouvres.reverse();
+    scaleStrings = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
+      targets: stringArray,
+      y: louvreSizeZ * louvreCount,
+      duration: 700,
+      easing: 'easeInOutSine',
+      autoplay: false
+    });
+    scaleStrings.reverse();
     tasselsToAnimate.forEach(function (tasselToAnimate, index) {
       var animation = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
         targets: tasselToAnimate.tassel.position,
@@ -65567,11 +65568,18 @@ __webpack_require__.r(__webpack_exports__);
     })),
         louvreAreaBox = new three__WEBPACK_IMPORTED_MODULE_1__["Box3"]().setFromObject(louvreArea);
     louvreArea.position.y = -blindTopperBox.getSize(vector).y / 2;
+    createTassels(blindTopper);
+    singleBlind.add(blindTopper); //
+    // var box = new THREE.BoxHelper(singleBlind, 0xffff00);
+    // box.scale.set(1.5, 1.5, 1.5);
+    // console.log(box);
+    // scene.add(box);
+
+    createLouvres(singleBlind, louvreArea);
     var louvreString = new three__WEBPACK_IMPORTED_MODULE_1__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_1__["CylinderGeometry"](0.3, 0.3, 1), new three__WEBPACK_IMPORTED_MODULE_1__["MeshLambertMaterial"]({
-      color: stringColor,
-      wireframe: true
+      color: stringColor
     }));
-    louvreString.scale.setY(louvreAreaBox.getSize(vector).y);
+    louvreString.scale.setY(louvreSizeY * louvreCount - louvreSizeY / 2);
     louvreString.geometry.translate(0, -0.5, 0);
     var stringPositions = [{
       x: -75,
@@ -65599,12 +65607,6 @@ __webpack_require__.r(__webpack_exports__);
       blindTopper.add(newString);
     }
 
-    createTassels(blindTopper);
-    singleBlind.add(blindTopper);
-    var box = new three__WEBPACK_IMPORTED_MODULE_1__["BoxHelper"](singleBlind, 0xffff00);
-    box.scale.set(1.5, 1.5, 1.5);
-    scene.add(box);
-    createLouvres(singleBlind, louvreArea);
     scene.add(singleBlind); // Make sure the camera shows all
 
     camera.position.z = Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360) + 200;
@@ -65671,11 +65673,6 @@ __webpack_require__.r(__webpack_exports__);
     louvre.receiveShadow = true;
     louvre.name = 'louvre';
     louvre.rotation.x = three__WEBPACK_IMPORTED_MODULE_1__["Math"].degToRad(90);
-    louvreArrayRotation = []; // Collect the louvres for rotating later
-
-    louvreArrayPosition = []; // Collect the louvres for positioning later
-
-    louvreArrayPositionNew = []; // Collect the new position values
 
     for (var louvreIndex = 0; louvreIndex < louvreCount;) {
       var newLouvre = louvre.clone();
