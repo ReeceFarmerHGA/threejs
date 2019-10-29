@@ -18756,16 +18756,16 @@ __webpack_require__.r(__webpack_exports__);
       tasselAnimations = {};
   var rotateLouvres, positionLouvres, scaleStrings; // Enviroment
 
-  var louvreSizeY = 13,
-      louvreSizeZ = 1,
+  var louvreSizeY = 3,
+      louvreSizeZ = 0.5,
       stringColor = 0xffffff,
       doorColor = 0xFEF2DD,
       louvreColour = 0x9ebdc6,
       doorSizeX = document.getElementById('width').value,
       doorSizeY = document.getElementById('height').value,
-      doorSizeZ = 24;
+      doorSizeZ = 8;
   var options = {
-    color: 0x9ebdc6,
+    color: louvreColour,
     toggleLouvreRotation: false,
     toggleLouvrePosition: false
   };
@@ -18889,53 +18889,6 @@ __webpack_require__.r(__webpack_exports__);
     shutters.open();
   }
   /**
-   *  Create the animations
-   **/
-
-
-  function createAnimations() {
-    rotateLouvres = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
-      targets: louvresToRotate,
-      x: three__WEBPACK_IMPORTED_MODULE_0__["Math"].degToRad(160),
-      duration: 500,
-      easing: 'easeInOutSine',
-      autoplay: false
-    });
-    rotateLouvres.reverse();
-    positionLouvres = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
-      targets: louvresToPosition,
-      y: function y(el, i, l) {
-        return louvresToPositionNewValues[i];
-      },
-      duration: 700,
-      easing: 'easeInOutSine',
-      autoplay: false
-    });
-    positionLouvres.reverse();
-    scaleStrings = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
-      targets: stringArray,
-      y: louvreSizeZ * louvreCount,
-      duration: 700,
-      easing: 'easeInOutSine',
-      autoplay: false
-    });
-    scaleStrings.reverse();
-    tasselsToAnimate.forEach(function (tasselToAnimate, index) {
-      var animation = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
-        targets: tasselToAnimate.tassel.position,
-        y: tasselToAnimate.endPosition,
-        duration: 700,
-        easing: 'easeInOutSine',
-        autoplay: false,
-        update: function update(anim) {
-          tasselToAnimate.rope.scale.y = tasselToAnimate.tassel.position.y * -1;
-        }
-      });
-      animation.reverse();
-      tasselAnimations[tasselToAnimate.animationName] = animation;
-    });
-  }
-  /**
    *  Create a blind
    **/
 
@@ -18943,64 +18896,60 @@ __webpack_require__.r(__webpack_exports__);
   function createBlind() {
     var singleBlind = new three__WEBPACK_IMPORTED_MODULE_0__["Group"]();
     var blind = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["BoxGeometry"](doorSizeX, doorSizeY, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_0__["MeshLambertMaterial"]({
-      color: doorColor,
-      wireframe: true
+      color: doorColor
     })),
         blindBox = new three__WEBPACK_IMPORTED_MODULE_0__["Box3"]().setFromObject(blind);
-    var blindTopper = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["BoxGeometry"](doorSizeX, 20, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_0__["MeshLambertMaterial"]({
+    var blindTopper = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["BoxGeometry"](doorSizeX, 6, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_0__["MeshLambertMaterial"]({
       color: doorColor
     })),
         blindTopperBox = new three__WEBPACK_IMPORTED_MODULE_0__["Box3"]().setFromObject(blindTopper);
     blindTopper.position.y = doorSizeY / 2 - blindTopperBox.getSize(vector).y / 2;
     var louvreArea = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["BoxGeometry"](doorSizeX, doorSizeY - blindTopperBox.getSize(vector).y, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_0__["MeshLambertMaterial"]({
       color: 0x00ff00,
+      wireframe: true,
       transparent: true,
       opacity: 0
     }));
     louvreArea.position.y = -blindTopperBox.getSize(vector).y / 2;
     createTassels(blindTopper);
-    singleBlind.add(blindTopper); //
-    // var box = new THREE.BoxHelper(singleBlind, 0xffff00);
-    // box.scale.set(1.5, 1.5, 1.5);
-    // console.log(box);
-    // scene.add(box);
-
     createLouvres(singleBlind, louvreArea);
     singleBlind.add(louvreArea);
-    var louvreString = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["CylinderGeometry"](0.3, 0.3, 1), new three__WEBPACK_IMPORTED_MODULE_0__["MeshLambertMaterial"]({
+    singleBlind.add(blindTopper);
+    var louvreString = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["CylinderGeometry"](0.1, 0.1, 1), new three__WEBPACK_IMPORTED_MODULE_0__["MeshLambertMaterial"]({
       color: stringColor
     }));
+    louvreString.name = 'louvreString';
     louvreString.scale.setY(louvreSizeY * louvreCount - louvreSizeY / 2);
     louvreString.geometry.translate(0, -0.5, 0);
-    var stringPositions = [{
-      x: -75,
-      y: 0,
-      z: doorSizeZ / 8
-    }, {
-      x: -75,
-      y: 0,
-      z: -(doorSizeZ / 8)
-    }, {
-      x: 75,
-      y: 0,
-      z: doorSizeZ / 8
-    }, {
-      x: 75,
-      y: 0,
-      z: -(doorSizeZ / 8)
-    }];
-    stringArray = [];
+    louvreString.position.y = -blindTopperBox.getSize(vector).y / 2;
+    var stringGroup = new three__WEBPACK_IMPORTED_MODULE_0__["Group"]();
+    var stringFront = louvreString.clone();
+    var stringBack = louvreString.clone();
+    stringFront.position.z = -(doorSizeZ / 2 * 0.20);
+    stringBack.position.z = doorSizeZ / 2 * 0.20;
+    stringGroup.add(stringBack, stringFront);
+    var leftmostString = stringGroup.clone();
+    var rightmostString = stringGroup.clone();
+    leftmostString.position.x = -(doorSizeX / 2) + 15;
+    rightmostString.position.x = doorSizeX / 2 - 15;
+    blindTopper.add(leftmostString, rightmostString);
+    var stringCount = 1,
+        stringGap = 999;
 
-    for (var stringInteger = 0; stringInteger < stringPositions.length; stringInteger++) {
-      var newString = louvreString.clone();
-      newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y - blindTopperBox.getSize(vector).y / 2, stringPositions[stringInteger].z);
-      stringArray.push(newString.scale);
+    while (stringGap > 30) {
+      stringGap = (doorSizeX - 30) / stringCount;
+      stringCount++;
+    }
+
+    for (var i = 0; i < stringCount; i++) {
+      var newString = stringGroup.clone();
       blindTopper.add(newString);
+      newString.position.x = -(doorSizeX / 2) + 15 + stringGap * i;
     }
 
     scene.add(singleBlind); // Make sure the camera shows all
 
-    camera.position.z = Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360) + 200;
+    camera.position.z = Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360) + Math.max(doorSizeX / 2, doorSizeY / 2);
   }
   /**
    *  Create Tassel elements and respective cords
@@ -19008,30 +18957,31 @@ __webpack_require__.r(__webpack_exports__);
 
 
   function createTassels(target) {
-    var tassel = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["CylinderGeometry"](2, 3, 10), new three__WEBPACK_IMPORTED_MODULE_0__["MeshLambertMaterial"]({
+    var tassel = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["CylinderGeometry"](0.6, 0.8, 2), new three__WEBPACK_IMPORTED_MODULE_0__["MeshLambertMaterial"]({
       color: doorColor
     }));
-    var rope = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["CylinderGeometry"](0.5, 0.5, 1), new three__WEBPACK_IMPORTED_MODULE_0__["MeshBasicMaterial"]({
+    var rope = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["CylinderGeometry"](0.15, 0.15, 1), new three__WEBPACK_IMPORTED_MODULE_0__["MeshBasicMaterial"]({
       color: 'white'
     }));
     rope.geometry.translate(0, 0.5, 0);
+    console.log(tassel.geometry);
     var tasselPositions = [{
-      x: -100,
-      y: -100,
-      z: doorSizeZ / 2 - 3,
-      animateTo: -50,
+      x: -(doorSizeX / 2) + doorSizeX / 6,
+      y: -(doorSizeY / 2),
+      z: doorSizeZ / 2 - 1,
+      animateTo: -(doorSizeY / 3),
       animationName: 'rotationCordUp'
     }, {
-      x: -70,
-      y: -100,
-      z: doorSizeZ / 2 - 3,
-      animateTo: -150,
+      x: -(doorSizeX / 2) + doorSizeX / 6 + 5,
+      y: -(doorSizeY / 2),
+      z: doorSizeZ / 2 - 1,
+      animateTo: -(doorSizeY / 3 * 2),
       animationName: 'rotationCordDown'
     }, {
-      x: 100,
-      y: -50,
-      z: doorSizeZ / 2 - 3,
-      animateTo: -150,
+      x: doorSizeX * 0.5 - doorSizeX / 6,
+      y: -(doorSizeY / 3),
+      z: doorSizeZ * 0.5 - 1,
+      animateTo: -(doorSizeY / 2),
       animationName: 'pullCordUp'
     }];
 
@@ -19080,6 +19030,58 @@ __webpack_require__.r(__webpack_exports__);
       louvreIndex++;
     }
   }
+  /**
+   *  Create the animations
+   **/
+
+
+  function createAnimations() {
+    rotateLouvres = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
+      targets: louvresToRotate,
+      x: three__WEBPACK_IMPORTED_MODULE_0__["Math"].degToRad(160),
+      duration: 500,
+      easing: 'easeInOutSine',
+      autoplay: false
+    });
+    rotateLouvres.reverse();
+    positionLouvres = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
+      targets: louvresToPosition,
+      y: function y(el, i, l) {
+        return louvresToPositionNewValues[i];
+      },
+      duration: 700,
+      easing: 'easeInOutSine',
+      autoplay: false
+    });
+    positionLouvres.reverse();
+    scene.traverse(function (mesh) {
+      if (mesh.name === 'louvreString') {
+        stringArray.push(mesh.scale);
+      }
+    });
+    scaleStrings = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
+      targets: stringArray,
+      y: louvreSizeZ * louvreCount,
+      duration: 700,
+      easing: 'easeInOutSine',
+      autoplay: false
+    });
+    scaleStrings.reverse();
+    tasselsToAnimate.forEach(function (tasselToAnimate, index) {
+      var animation = Object(animejs_lib_anime_es_js__WEBPACK_IMPORTED_MODULE_5__["default"])({
+        targets: tasselToAnimate.tassel.position,
+        y: tasselToAnimate.endPosition,
+        duration: 700,
+        easing: 'easeInOutSine',
+        autoplay: false,
+        update: function update(anim) {
+          tasselToAnimate.rope.scale.y = tasselToAnimate.tassel.position.y * -1;
+        }
+      });
+      animation.reverse();
+      tasselAnimations[tasselToAnimate.animationName] = animation;
+    });
+  }
 
   function onWindowResize() {
     camera.aspect = stage.offsetWidth / stage.offsetHeight;
@@ -19089,16 +19091,17 @@ __webpack_require__.r(__webpack_exports__);
 
   function animate() {
     // Render the scene
-    renderer.render(scene, camera);
+    renderer.render(scene, camera); // Realign the scene
+
     var canvas = renderer.domElement;
     camera.aspect = canvas.clientWidth / canvas.clientHeight;
-    camera.updateProjectionMatrix(); // Restart the loop
-
-    requestAnimationFrame(animate); // Update the controls
+    camera.updateProjectionMatrix(); // Update the controls
 
     controls.update(); // Update the stats
 
-    stats.update();
+    stats.update(); // Restart the loop
+
+    requestAnimationFrame(animate);
   }
 
   function dec2hex(i) {

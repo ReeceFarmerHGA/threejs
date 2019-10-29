@@ -30,17 +30,17 @@ import anime from 'animejs/lib/anime.es.js';
     var rotateLouvres, positionLouvres, scaleStrings;
 
     // Enviroment
-    var louvreSizeY = 13,
-        louvreSizeZ = 1,
+    var louvreSizeY = 3,
+        louvreSizeZ = 0.5,
         stringColor = 0xffffff,
         doorColor = 0xFEF2DD,
         louvreColour = 0x9ebdc6,
         doorSizeX = document.getElementById('width').value,
         doorSizeY = document.getElementById('height').value,
-        doorSizeZ = 24;
+        doorSizeZ = 8;
 
     var options = {
-        color: 0x9ebdc6,
+        color: louvreColour,
         toggleLouvreRotation: false,
         toggleLouvrePosition: false
     };
@@ -179,53 +179,6 @@ import anime from 'animejs/lib/anime.es.js';
     }
 
     /**
-     *  Create the animations
-     **/
-    function createAnimations() {
-        rotateLouvres = anime({
-            targets: louvresToRotate,
-            x: THREE.Math.degToRad(160),
-            duration: 500,
-            easing: 'easeInOutSine',
-            autoplay: false
-        });
-        rotateLouvres.reverse();
-
-        positionLouvres = anime({
-            targets: louvresToPosition,
-            y: (el, i, l) => louvresToPositionNewValues[i],
-            duration: 700,
-            easing: 'easeInOutSine',
-            autoplay: false
-        });
-        positionLouvres.reverse();
-
-        scaleStrings = anime({
-            targets: stringArray,
-            y: (louvreSizeZ) * louvreCount,
-            duration: 700,
-            easing: 'easeInOutSine',
-            autoplay: false
-        });
-        scaleStrings.reverse();
-
-        tasselsToAnimate.forEach(function (tasselToAnimate, index) {
-            var animation = anime({
-                targets: tasselToAnimate.tassel.position,
-                y: tasselToAnimate.endPosition,
-                duration: 700,
-                easing: 'easeInOutSine',
-                autoplay: false,
-                update: function (anim) {
-                    tasselToAnimate.rope.scale.y = tasselToAnimate.tassel.position.y * -1;
-                }
-            });
-            animation.reverse();
-            tasselAnimations[tasselToAnimate.animationName] = animation;
-        });
-    }
-
-    /**
      *  Create a blind
      **/
     function createBlind() {
@@ -234,14 +187,13 @@ import anime from 'animejs/lib/anime.es.js';
         var blind = new THREE.Mesh(
                 new THREE.BoxGeometry(doorSizeX, doorSizeY, doorSizeZ),
                 new THREE.MeshLambertMaterial({
-                    color: doorColor,
-                    wireframe: true
+                    color: doorColor
                 })
             ),
             blindBox = new THREE.Box3().setFromObject(blind);
 
         var blindTopper = new THREE.Mesh(
-                new THREE.BoxGeometry(doorSizeX, 20, doorSizeZ),
+                new THREE.BoxGeometry(doorSizeX, 6, doorSizeZ),
                 new THREE.MeshLambertMaterial({
                     color: doorColor
                 })
@@ -253,6 +205,7 @@ import anime from 'animejs/lib/anime.es.js';
             new THREE.BoxGeometry(doorSizeX, doorSizeY - blindTopperBox.getSize(vector).y, doorSizeZ),
             new THREE.MeshLambertMaterial({
                 color: 0x00ff00,
+                wireframe: true,
                 transparent: true,
                 opacity: 0
             })
@@ -260,54 +213,51 @@ import anime from 'animejs/lib/anime.es.js';
         louvreArea.position.y = -blindTopperBox.getSize(vector).y / 2;
 
         createTassels(blindTopper);
-
-        singleBlind.add(blindTopper);
-        //
-        // var box = new THREE.BoxHelper(singleBlind, 0xffff00);
-        // box.scale.set(1.5, 1.5, 1.5);
-        // console.log(box);
-        // scene.add(box);
-
         createLouvres(singleBlind, louvreArea);
         singleBlind.add(louvreArea);
+        singleBlind.add(blindTopper);
 
         var louvreString = new THREE.Mesh(
-            new THREE.CylinderGeometry(0.3, 0.3, 1),
+            new THREE.CylinderGeometry(0.1, 0.1, 1),
             new THREE.MeshLambertMaterial({
                 color: stringColor
             })
         );
+        louvreString.name = 'louvreString';
         louvreString.scale.setY((louvreSizeY * louvreCount) - louvreSizeY / 2);
         louvreString.geometry.translate(0, -0.5, 0);
-        var stringPositions = [{
-            x: -75,
-            y: 0,
-            z: (doorSizeZ / 8)
-        }, {
-            x: -75,
-            y: 0,
-            z: -(doorSizeZ / 8)
-        }, {
-            x: 75,
-            y: 0,
-            z: (doorSizeZ / 8)
-        }, {
-            x: 75,
-            y: 0,
-            z: -(doorSizeZ / 8)
-        }];
-        stringArray = [];
-        for (var stringInteger = 0; stringInteger < stringPositions.length; stringInteger++) {
-            var newString = louvreString.clone();
-            newString.position.set(stringPositions[stringInteger].x, stringPositions[stringInteger].y - blindTopperBox.getSize(vector).y / 2, stringPositions[stringInteger].z);
-            stringArray.push(newString.scale);
+        louvreString.position.y = -blindTopperBox.getSize(vector).y / 2;
+
+        var stringGroup = new THREE.Group();
+        var stringFront = louvreString.clone();
+        var stringBack = louvreString.clone();
+        stringFront.position.z = -((doorSizeZ / 2) * 0.20);
+        stringBack.position.z = (doorSizeZ / 2) * 0.20;
+        stringGroup.add(stringBack, stringFront);
+
+        var leftmostString = stringGroup.clone();
+        var rightmostString = stringGroup.clone();
+        leftmostString.position.x = -(doorSizeX / 2) + 15;
+        rightmostString.position.x = doorSizeX / 2 - 15;
+
+        blindTopper.add(leftmostString, rightmostString);
+
+        var stringCount = 1,
+            stringGap = 999;
+        while (stringGap > 30) {
+            stringGap = (doorSizeX - 30) / stringCount;
+            stringCount++;
+        }
+        for (var i = 0; i < stringCount; i++) {
+            var newString = stringGroup.clone();
             blindTopper.add(newString);
+            newString.position.x = (-(doorSizeX / 2) + 15) + stringGap * i;
         }
 
         scene.add(singleBlind);
 
         // Make sure the camera shows all
-        camera.position.z = (Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360)) + 200;
+        camera.position.z = (Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360)) + Math.max(doorSizeX / 2, doorSizeY / 2);
     }
 
     /**
@@ -315,34 +265,35 @@ import anime from 'animejs/lib/anime.es.js';
      **/
     function createTassels(target) {
         var tassel = new THREE.Mesh(
-            new THREE.CylinderGeometry(2, 3, 10),
+            new THREE.CylinderGeometry(0.6, 0.8, 2),
             new THREE.MeshLambertMaterial({
                 color: doorColor
             })
         );
-        var rope = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1), new THREE.MeshBasicMaterial({
+        var rope = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1), new THREE.MeshBasicMaterial({
             color: 'white'
         }));
         rope.geometry.translate(0, 0.5, 0);
 
+        console.log(tassel.geometry);
         var tasselPositions = [{
-                x: -100,
-                y: -100,
-                z: doorSizeZ / 2 - 3,
-                animateTo: -50,
+                x: -(doorSizeX / 2) + doorSizeX / 6,
+                y: -(doorSizeY / 2),
+                z: doorSizeZ / 2 - 1,
+                animateTo: -(doorSizeY / 3),
                 animationName: 'rotationCordUp'
             }, {
-                x: -70,
-                y: -100,
-                z: doorSizeZ / 2 - 3,
-                animateTo: -150,
+                x: -(doorSizeX / 2) + doorSizeX / 6 + 5,
+                y: -(doorSizeY / 2),
+                z: doorSizeZ / 2 - 1,
+                animateTo: -((doorSizeY / 3) * 2),
                 animationName: 'rotationCordDown'
             },
             {
-                x: 100,
-                y: -50,
-                z: doorSizeZ / 2 - 3,
-                animateTo: -150,
+                x: doorSizeX * 0.5 - (doorSizeX / 6),
+                y: -(doorSizeY / 3),
+                z: doorSizeZ * 0.5 - 1,
+                animateTo: -(doorSizeY / 2),
                 animationName: 'pullCordUp'
             }
         ];
@@ -397,6 +348,58 @@ import anime from 'animejs/lib/anime.es.js';
         }
     }
 
+    /**
+     *  Create the animations
+     **/
+    function createAnimations() {
+        rotateLouvres = anime({
+            targets: louvresToRotate,
+            x: THREE.Math.degToRad(160),
+            duration: 500,
+            easing: 'easeInOutSine',
+            autoplay: false
+        });
+        rotateLouvres.reverse();
+
+        positionLouvres = anime({
+            targets: louvresToPosition,
+            y: (el, i, l) => louvresToPositionNewValues[i],
+            duration: 700,
+            easing: 'easeInOutSine',
+            autoplay: false
+        });
+        positionLouvres.reverse();
+
+        scene.traverse(function (mesh) {
+            if (mesh.name === 'louvreString') {
+                stringArray.push(mesh.scale);
+            }
+        });
+        scaleStrings = anime({
+            targets: stringArray,
+            y: (louvreSizeZ) * louvreCount,
+            duration: 700,
+            easing: 'easeInOutSine',
+            autoplay: false
+        });
+        scaleStrings.reverse();
+
+        tasselsToAnimate.forEach(function (tasselToAnimate, index) {
+            var animation = anime({
+                targets: tasselToAnimate.tassel.position,
+                y: tasselToAnimate.endPosition,
+                duration: 700,
+                easing: 'easeInOutSine',
+                autoplay: false,
+                update: function (anim) {
+                    tasselToAnimate.rope.scale.y = tasselToAnimate.tassel.position.y * -1;
+                }
+            });
+            animation.reverse();
+            tasselAnimations[tasselToAnimate.animationName] = animation;
+        });
+    }
+
     function onWindowResize() {
         camera.aspect = stage.offsetWidth / stage.offsetHeight;
         camera.updateProjectionMatrix();
@@ -407,18 +410,19 @@ import anime from 'animejs/lib/anime.es.js';
         // Render the scene
         renderer.render(scene, camera);
 
+        // Realign the scene
         const canvas = renderer.domElement;
         camera.aspect = canvas.clientWidth / canvas.clientHeight;
         camera.updateProjectionMatrix();
-
-        // Restart the loop
-        requestAnimationFrame(animate);
 
         // Update the controls
         controls.update();
 
         // Update the stats
         stats.update();
+
+        // Restart the loop
+        requestAnimationFrame(animate);
     }
 
     function dec2hex(i) {
