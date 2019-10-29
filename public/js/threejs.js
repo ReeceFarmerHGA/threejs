@@ -18808,9 +18808,7 @@ __webpack_require__.r(__webpack_exports__);
     // createFloor();
     // Create blind
 
-    createBlind(); // Create animations
-
-    createAnimations(); // Create gui
+    createBlind(); // Create gui
 
     createGui();
     window.addEventListener('load', onWindowResize, false);
@@ -18894,6 +18892,13 @@ __webpack_require__.r(__webpack_exports__);
 
 
   function createBlind() {
+    louvresToRotate = [];
+    louvresToPosition = [];
+    louvresToPositionNewValues = [];
+    stringArray = [];
+    tasselsToAnimate = [];
+    ropes = [];
+    tasselAnimations = {};
     scene.remove(singleBlind);
     singleBlind = new three__WEBPACK_IMPORTED_MODULE_0__["Group"]();
     var blind = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["BoxGeometry"](doorSizeX, doorSizeY, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_0__["MeshLambertMaterial"]({
@@ -18948,7 +18953,8 @@ __webpack_require__.r(__webpack_exports__);
       newString.position.x = -(doorSizeX / 2) + 15 + stringGap * i;
     }
 
-    scene.add(singleBlind); // Make sure the camera shows all
+    scene.add(singleBlind);
+    createAnimations(); // Make sure the camera shows all
 
     camera.position.z = Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360) + Math.max(doorSizeX / 2, doorSizeY / 2);
   }

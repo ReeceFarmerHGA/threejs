@@ -93,9 +93,6 @@ import anime from 'animejs/lib/anime.es.js';
         // Create blind
         createBlind();
 
-        // Create animations
-        createAnimations();
-
         // Create gui
         createGui();
 
@@ -182,6 +179,13 @@ import anime from 'animejs/lib/anime.es.js';
      *  Create a blind
      **/
     function createBlind() {
+        louvresToRotate = [];
+        louvresToPosition = [];
+        louvresToPositionNewValues = [];
+        stringArray = [];
+        tasselsToAnimate = [];
+        ropes = [];
+        tasselAnimations = {};
         scene.remove(singleBlind);
         singleBlind = new THREE.Group();
 
@@ -256,6 +260,8 @@ import anime from 'animejs/lib/anime.es.js';
         }
 
         scene.add(singleBlind);
+
+        createAnimations();
 
         // Make sure the camera shows all
         camera.position.z = (Math.max(blindBox.getSize(vector).y, blindBox.getSize(vector).x) / 2 / Math.tan(Math.PI * 45 / 360)) + Math.max(doorSizeX / 2, doorSizeY / 2);
