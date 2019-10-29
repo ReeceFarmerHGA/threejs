@@ -14,7 +14,7 @@ import anime from 'animejs/lib/anime.es.js';
     'use strict';
 
     // Reusable vars
-    var scene, camera, renderer, controls, stats, hemisphereLight, louvreCount;
+    var scene, camera, renderer, controls, stats, hemisphereLight, louvreCount, singleBlind;
     var vector = new THREE.Vector3();
     var stage = document.getElementById('threejs-stage');
 
@@ -182,7 +182,8 @@ import anime from 'animejs/lib/anime.es.js';
      *  Create a blind
      **/
     function createBlind() {
-        var singleBlind = new THREE.Group();
+        scene.remove(singleBlind);
+        singleBlind = new THREE.Group();
 
         var blind = new THREE.Mesh(
                 new THREE.BoxGeometry(doorSizeX, doorSizeY, doorSizeZ),
@@ -275,22 +276,21 @@ import anime from 'animejs/lib/anime.es.js';
         }));
         rope.geometry.translate(0, 0.5, 0);
 
-        console.log(tassel.geometry);
         var tasselPositions = [{
-                x: -(doorSizeX / 2) + doorSizeX / 6,
+                x: -(doorSizeX / 2) + 8.5,
                 y: -(doorSizeY / 2),
                 z: doorSizeZ / 2 - 1,
                 animateTo: -(doorSizeY / 3),
                 animationName: 'rotationCordUp'
             }, {
-                x: -(doorSizeX / 2) + doorSizeX / 6 + 5,
+                x: -(doorSizeX / 2) + 13.5,
                 y: -(doorSizeY / 2),
                 z: doorSizeZ / 2 - 1,
                 animateTo: -((doorSizeY / 3) * 2),
                 animationName: 'rotationCordDown'
             },
             {
-                x: doorSizeX * 0.5 - (doorSizeX / 6),
+                x: doorSizeX * 0.5 - 8,
                 y: -(doorSizeY / 3),
                 z: doorSizeZ * 0.5 - 1,
                 animateTo: -(doorSizeY / 2),
@@ -423,6 +423,18 @@ import anime from 'animejs/lib/anime.es.js';
 
         // Restart the loop
         requestAnimationFrame(animate);
+
+        var store = doorSizeX;
+        if (document.getElementById('width').value !== store) {
+            doorSizeX = document.getElementById('width').value;
+            createBlind();
+        }
+
+        var store2 = doorSizeY;
+        if (document.getElementById('height').value !== store2) {
+            doorSizeY = document.getElementById('height').value;
+            createBlind();
+        }
     }
 
     function dec2hex(i) {

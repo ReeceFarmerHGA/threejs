@@ -18743,7 +18743,7 @@ __webpack_require__.r(__webpack_exports__);
 (function () {
   'use strict'; // Reusable vars
 
-  var scene, camera, renderer, controls, stats, hemisphereLight, louvreCount;
+  var scene, camera, renderer, controls, stats, hemisphereLight, louvreCount, singleBlind;
   var vector = new three__WEBPACK_IMPORTED_MODULE_0__["Vector3"]();
   var stage = document.getElementById('threejs-stage'); // Animations
 
@@ -18894,7 +18894,8 @@ __webpack_require__.r(__webpack_exports__);
 
 
   function createBlind() {
-    var singleBlind = new three__WEBPACK_IMPORTED_MODULE_0__["Group"]();
+    scene.remove(singleBlind);
+    singleBlind = new three__WEBPACK_IMPORTED_MODULE_0__["Group"]();
     var blind = new three__WEBPACK_IMPORTED_MODULE_0__["Mesh"](new three__WEBPACK_IMPORTED_MODULE_0__["BoxGeometry"](doorSizeX, doorSizeY, doorSizeZ), new three__WEBPACK_IMPORTED_MODULE_0__["MeshLambertMaterial"]({
       color: doorColor
     })),
@@ -18964,21 +18965,20 @@ __webpack_require__.r(__webpack_exports__);
       color: 'white'
     }));
     rope.geometry.translate(0, 0.5, 0);
-    console.log(tassel.geometry);
     var tasselPositions = [{
-      x: -(doorSizeX / 2) + doorSizeX / 6,
+      x: -(doorSizeX / 2) + 8.5,
       y: -(doorSizeY / 2),
       z: doorSizeZ / 2 - 1,
       animateTo: -(doorSizeY / 3),
       animationName: 'rotationCordUp'
     }, {
-      x: -(doorSizeX / 2) + doorSizeX / 6 + 5,
+      x: -(doorSizeX / 2) + 13.5,
       y: -(doorSizeY / 2),
       z: doorSizeZ / 2 - 1,
       animateTo: -(doorSizeY / 3 * 2),
       animationName: 'rotationCordDown'
     }, {
-      x: doorSizeX * 0.5 - doorSizeX / 6,
+      x: doorSizeX * 0.5 - 8,
       y: -(doorSizeY / 3),
       z: doorSizeZ * 0.5 - 1,
       animateTo: -(doorSizeY / 2),
@@ -19102,6 +19102,19 @@ __webpack_require__.r(__webpack_exports__);
     stats.update(); // Restart the loop
 
     requestAnimationFrame(animate);
+    var store = doorSizeX;
+
+    if (document.getElementById('width').value !== store) {
+      doorSizeX = document.getElementById('width').value;
+      createBlind();
+    }
+
+    var store2 = doorSizeY;
+
+    if (document.getElementById('height').value !== store2) {
+      doorSizeY = document.getElementById('height').value;
+      createBlind();
+    }
   }
 
   function dec2hex(i) {
